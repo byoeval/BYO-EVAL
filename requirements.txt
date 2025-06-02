@@ -1,14 +1,14 @@
 bpy==4.0.0
 mathutils==3.3.0
 numpy==2.2.2
-dotenv
-openai
-PyYAML
+python-dotenv==1.1.0
+openai==1.75.0
+PyYAML==6.0.2
 pandas==2.2.0
-rich 
-scikit-learn
-seaborn
-matplotlib
-groq
+rich==13.9.4
+scikit-learn==1.5.2
+seaborn==0.13.2
+matplotlib==3.9.4
+groq==0.11.0
 # add HF
-huggingface-hub
+huggingface-hub==0.28.2
