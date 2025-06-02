@@ -21,9 +21,9 @@ The VLM Diagnostic Evaluation Tool assesses the capabilities of various Vision-L
 
 ### Prerequisites
 
-- Python 3.8+
+- Python 3.10
 - Required packages (listed in requirements.txt)
-- API keys for the VLM providers you want to test
+- API keys for the VLM providers you want to test or Ollama
 
 ## Setup 
 ### Conda
@@ -54,19 +54,7 @@ python -m pip install requirements.txt
 Make sure to fill **.env** with API credential (Groq, HuggingFace, Azure) 
 
 
-## Folder Structure: 
-```
-dataset/
-  └── count/
-      ├── img/
-      │   ├── image1.png
-      │   ├── image2.png
-      │   └── ...
-      └── legend_json/
-          ├── image1.json
-          ├── image2.json
-          └── ...
-```
+
 ## Usage:
 
 ```bash

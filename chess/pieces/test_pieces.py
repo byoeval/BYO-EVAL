@@ -1,9 +1,11 @@
 import os
 import sys
 
-# Add project root to Python path
+# add project root to path
 project_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 sys.path.append(project_root)
+
+print(project_root)
 
 import bpy
 import mathutils
@@ -11,7 +13,7 @@ import mathutils
 from scene_setup.rendering import setup_render
 from utils.blender_utils import enable_gpu_rendering
 
-from ..pieces import (
+from chess.pieces import (
     create_bishop,
     create_king,
     create_knight,
@@ -116,7 +118,7 @@ def test_all_pieces(output_dir: str = "tests/images/piece_test_renders"):
     setup_camera((8, -8, 5), (2.5, 0, 0))  # Adjusted camera position for better view
 
     # Setup render settings
-    setup_render(resolution="medium", samples=128)
+    setup_render()
 
     # Dictionary mapping piece types to their creation functions
     piece_creators = {

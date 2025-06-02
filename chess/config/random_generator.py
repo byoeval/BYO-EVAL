@@ -1,8 +1,8 @@
 import random
 from typing import Any
 
-from .difficulty_presets import get_difficulty_preset
-from .models import (
+from chess.config.difficulty_presets import get_difficulty_preset
+from chess.config.models import (
     BoardModel,
     BoardRandomizationModel,
     GeometryModel,

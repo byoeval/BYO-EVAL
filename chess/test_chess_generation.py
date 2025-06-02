@@ -1,4 +1,9 @@
-from typing import List, Optional, Union
+import os
+import sys
+
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+print(sys.path)
 
 from chess.config.models import (
     BoardRandomizationModel,
@@ -194,12 +199,8 @@ def test_custom_random_generation(
             print(f.read())
 
 
-
 if __name__ == "__main__":
     # Test basic scene generation
-
-    # Test level 1 configurations
-
 
     print("\nTesting basic scene generation:")
     scene_path, legend_path, updated_scene_config, updated_board_config, updated_pieces_config, noise_result = generate_chess_image(

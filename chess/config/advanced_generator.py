@@ -1,13 +1,13 @@
 import random
 from typing import Any
 
-from .advanced_models import (
+from chess.config.advanced_models import (
     CountSpecificationType,
     PieceCountModel,
     PiecePosition,
     PieceTypeModel,
 )
-from .models import BoardModel, GeometryModel, MaterialModel, PieceModel
+from chess.config.models import BoardModel, GeometryModel, MaterialModel, PieceModel
 
 
 class PieceCountGenerator:

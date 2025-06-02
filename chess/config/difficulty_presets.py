@@ -2,7 +2,7 @@
 
 from typing import Any
 
-from .models import (
+from chess.config.models import (
     BoardRandomizationModel,
     DifficultyPreset,
     PieceCountRange,

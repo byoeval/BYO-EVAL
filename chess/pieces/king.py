@@ -3,8 +3,8 @@ from typing import Any
 
 import bpy
 
-from ..config.models import PieceModel
-from .base import ChessPiece
+from chess.config.models import PieceModel
+from chess.pieces.base import ChessPiece
 
 
 class King(ChessPiece):

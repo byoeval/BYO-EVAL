@@ -6,7 +6,7 @@ randomization options.
 """
 
 # Import from original modules
-from .advanced_generator import (
+from chess.config.advanced_generator import (
     ChessConfigGenerator,
     PieceCountGenerator,
     PiecePositionGenerator,
@@ -14,7 +14,7 @@ from .advanced_generator import (
 )
 
 # Import from advanced modules
-from .advanced_models import (
+from chess.config.advanced_models import (
     CountSpecificationType,
     PieceCountModel,
     PiecePositionModel,
@@ -23,7 +23,7 @@ from .advanced_models import (
     SpreadLevel,
     StartingPoint,
 )
-from .models import (
+from chess.config.models import (
     BoardModel,
     BoardRandomizationModel,
     DifficultyPreset,
@@ -34,7 +34,7 @@ from .models import (
     PieceRandomizationModel,
     RandomizationRange,
 )
-from .random_generator import RandomConfigGenerator
+from chess.config.random_generator import RandomConfigGenerator
 
 __all__ = [
     # Original classes

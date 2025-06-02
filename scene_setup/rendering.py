@@ -57,7 +57,7 @@ def clear_scene():
                 bpy.data.actions.remove(block)
 
 
-def setup_render(config: dict[str, Any]):
+def setup_render(config: dict[str, Any] | None = None):
     """
     Setup the render settings from a RenderModel or configuration dictionary.
 

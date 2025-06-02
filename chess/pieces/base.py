@@ -4,7 +4,7 @@ from abc import ABC, abstractmethod
 
 import bpy
 
-from ..config.models import PieceModel
+from chess.config.models import PieceModel
 
 
 class ChessPiece(ABC):
