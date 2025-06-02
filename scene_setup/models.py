@@ -425,8 +425,6 @@ class SceneSetupModel:
         if not isinstance(config, dict):
             config = {}
 
-        default_instance = cls()
-
         return cls(
             camera=CameraModel.from_dict(config.get("camera", {})),
             table=TableModel.from_dict(config.get("table", {})),

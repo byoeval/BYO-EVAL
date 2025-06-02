@@ -35,8 +35,8 @@ ignore = [
     "E402",  # Module level import not at top of file (common in your codebase)
     "E501",  # Line too long (will be handled gradually)
     "E701",  # Multiple statements on one line (colon) - can be fixed later
-    "F841",  # Local variable assigned but never used - can be cleaned up gradually
     "E722",  # Do not use bare except - should be fixed but not blocking
+    "SIM102",  # Use a single `if` statement instead of nested `if` statements
 ]
 
 # Per-file ignores

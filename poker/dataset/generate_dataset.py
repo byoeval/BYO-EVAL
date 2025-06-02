@@ -491,7 +491,6 @@ class DatasetGenerator:
         # Determine final output paths based on the hint
         output_dir = output_path_hint.parent
         base_filename = output_path_hint.stem
-        img_output_path = output_dir / f"{base_filename}.png"
 
         try:
             logger.info(f"Starting image generation for config derived from: {image_config.get('_variable_values_used', 'N/A')}")

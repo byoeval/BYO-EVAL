@@ -505,7 +505,7 @@ class MetricsPlotter:
             temp_df['norm_abs_error'] = np.nan
 
             # Group by variable_col to calculate normalization factors
-            for level, group in temp_df[valid_idx].groupby(self.variable_col):
+            for _, group in temp_df[valid_idx].groupby(self.variable_col):
                 targets_group = pd.to_numeric(group['targets'], errors='coerce')
                 target_range = targets_group.max() - targets_group.min()
 
@@ -1040,7 +1040,7 @@ class MetricsPlotter:
             _heatmap_kwargs.update(heatmap_kwargs)
 
         # Create the heatmap with our manually constructed matrix
-        heatmap = sns.heatmap(cm, ax=ax, **_heatmap_kwargs)
+        _ = sns.heatmap(cm, ax=ax, **_heatmap_kwargs)
 
         ax.set_title(f"Confusion Matrix {' (Normalized: ' + normalize + ')' if normalize else ''}")
         ax.set_ylabel('True label')

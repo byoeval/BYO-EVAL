@@ -529,8 +529,6 @@ class GroqVLM(VLM):
 
         # Read image and get basic info
         try:
-            import io
-
             from PIL import Image
 
             # Get basic image information
@@ -638,7 +636,7 @@ class OllamaVLM(VLM):
         start_time = time.time()
 
         try:
-            with open(image_path, "rb") as image_file:
+            with open(image_path, "rb"):
                 response = self.client.generate(
                     model=self.model_name,
                     prompt=prompt,

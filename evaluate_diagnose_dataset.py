@@ -814,7 +814,6 @@ def calculate_additional_metrics(results: dict) -> dict:
             image_mses = []
             image_rmses = []
             image_nmaes = []
-            image_consistencies = []
 
             # Process each image
             for _image_name, image_data in results["providers"][provider]["images"].items():
@@ -1598,7 +1597,6 @@ def generate_latex_tables(results: dict, output_dir: Path, pre_prompt_key: str="
 
                     metrics = results["providers"][provider]["tasks"][task]
                     accuracy = metrics.get("accuracy", 0)
-                    nmae = metrics.get("normalized_mae", float('nan'))
 
                     f.write(f"& {accuracy:.2f} ")
                 else:

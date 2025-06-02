@@ -147,7 +147,6 @@ def extract_object_from_blend(blend_file_path,
         bpy.types.Object or bpy.types.Collection or None: The extracted object/collection or None if not found
     """
     # Store current file state
-    current_file = bpy.data.filepath
     current_scene_name = bpy.context.scene.name if bpy.context.scene else None
 
     print(f"Extracting {object_name} from {blend_file_path}")
