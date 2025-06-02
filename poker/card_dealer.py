@@ -2,16 +2,9 @@
 
 import logging
 
-# Ensure workspace root is in path for sibling imports
-# (This might be needed if this module is run standalone or imported differently)
-import os
 import random
-import sys
 from typing import Any
 
-workspace_root_dealer = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
-if workspace_root_dealer not in sys.path:
-    sys.path.append(workspace_root_dealer)
 
 # Use CardDistributionInput to type hint the raw config dict
 from poker.config.models import DEFAULT_CARD_NAMES, CardDistributionInput

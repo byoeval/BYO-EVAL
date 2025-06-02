@@ -3,17 +3,12 @@ import math
 
 # Ensure workspace root is in path for sibling imports
 # (Assuming this logic might be needed if models.py is run directly or imported elsewhere)
-import os
 import random
-import sys
 import traceback  # Added import
 from dataclasses import dataclass, field
 from enum import Enum
 from typing import Any
 
-workspace_root_models = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..')) # Go up two levels
-if workspace_root_models not in sys.path:
-    sys.path.append(workspace_root_models)
 
 # Import the newly created function
 # from poker.player_location_builder import calculate_player_locations, PlayerDistribution

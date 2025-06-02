@@ -1,6 +1,6 @@
 dataset:
   name: "count_blur_variation"
-  output_dir: "/home/count_blur"
+  output_dir: "chess/test"
   piece_set: "old_school"
 
 variables:

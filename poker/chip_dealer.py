@@ -2,15 +2,9 @@
 
 import logging
 
-# Ensure workspace root is in path for sibling imports
-import os
 import random
-import sys
 from typing import Any
 
-workspace_root_dealer = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
-if workspace_root_dealer not in sys.path:
-    sys.path.append(workspace_root_dealer)
 
 # Use ChipDistributionInput for type hinting
 from poker.config.models import ChipDistributionInput

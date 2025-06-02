@@ -3,16 +3,11 @@ import math
 import os
 import random
 
-# Ensure workspace root is in path for sibling imports
 import sys
 from typing import Any
 
 import bpy
 from mathutils import Vector
-
-workspace_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
-if workspace_root not in sys.path:
-    sys.path.append(workspace_root)
 
 # Models and Loader
 from poker.config.models import (

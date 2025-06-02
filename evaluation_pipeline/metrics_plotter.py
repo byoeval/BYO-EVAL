@@ -6,7 +6,7 @@ import numpy as np
 import pandas as pd
 import seaborn as sns
 
-from .metrics_calculator import MetricsCalculator
+from evaluation_pipeline.metrics_calculator import MetricsCalculator
 
 # Removed compute_regression_stats as it's used internally by MetricsCalculator's methods primarily
 

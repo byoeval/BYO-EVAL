@@ -8,15 +8,9 @@ information for poker scenes, including table, cards, players, and chips.
 import json
 import logging
 
-# Ensure workspace root is in path for sibling imports
-import os
-import sys
 from pathlib import Path
 from typing import Any
 
-workspace_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
-if workspace_root not in sys.path:
-    sys.path.append(workspace_root)
 
 from poker.config.models import (
     CardOverlapModel,
