@@ -7,8 +7,8 @@ import bpy
 
 from utils.blender_utils import extract_object_from_blend
 
-from ...config.models import PieceConfig
-from ...pieces.base import ChessPiece
+from chess.config.models import PieceConfig
+from chess.pieces.base import ChessPiece
 
 
 class BlendPiece(ChessPiece):

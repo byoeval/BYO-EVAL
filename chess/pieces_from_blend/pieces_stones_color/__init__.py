@@ -1,6 +1,6 @@
 """Chess pieces loaded from blend files."""
 
-from .pieces import (
+from chess.pieces_from_blend.pieces_stones_color.pieces import (
     create_bishop,
     create_king,
     create_knight,
