@@ -1,7 +1,8 @@
 import json
+import os
 import random
 import string
-import os
+
 
 # Function to generate random strings
 def generate_random_string(length=8):
@@ -18,7 +19,7 @@ def replace_piece_keys(d):
                 new_key = key.split('_')[0] + '_' + generate_random_string()
             else:
                 new_key = key
-            
+
             # Recurse into the value
             new_dict[new_key] = replace_piece_keys(value)
         return new_dict
@@ -27,10 +28,10 @@ def replace_piece_keys(d):
         return [replace_piece_keys(item) for item in d]
     else:
         return d
-    
+
 # Function to load a JSON file, process it, and save a modified JSON file
 def process_json_file(input_filename:str, output_filename:str):
-    with open(input_filename, 'r') as f:
+    with open(input_filename) as f:
         json_data = json.load(f)
 
     processed_json = replace_piece_keys(json_data)
@@ -52,13 +53,13 @@ def process_all_json_files_in_folder(input_folder, output_folder):
             output_filepath = os.path.join(output_folder, filename)
             print(input_filepath)
             process_json_file(input_filepath, output_filepath)
-    
+
 if __name__ == "__main__":
     path = os.getenv("PROJECT_PATH")
     # Example usage
-    input_folder = 'annotation/legend_json' #'count_chess/count/legend_json' 
-    output_folder = 'annotation/legend_pseudo_json' #'count_chess/count/legend_pseudo_json' 
+    input_folder = 'annotation/legend_json' #'count_chess/count/legend_json'
+    output_folder = 'annotation/legend_pseudo_json' #'count_chess/count/legend_pseudo_json'
 
     #process_json_file('count_chess/count/legend_json/count_img_00078.json','output.json')
 
-    process_all_json_files_in_folder(input_folder, output_folder)   
+    process_all_json_files_in_folder(input_folder, output_folder)

@@ -4,14 +4,15 @@ Supported providers: Azure OpenAI, Groq, Ollama, HuggingFace
 """
 
 import base64
-import os
-import requests
-import json
-from typing import Dict, List, Union, Optional, Any, Tuple, Callable, TypedDict
-from enum import Enum
 import importlib.util
+import json
+import os
 import sys
 import time
+from enum import Enum
+from typing import Any, TypedDict
+
+import requests
 
 # Add parent directory to path to import from other modules
 parent_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -59,35 +60,35 @@ class VLMAnalysisType(str, Enum):
 class VLMCallMetrics(TypedDict, total=False):
     """Metrics for a VLM call."""
     elapsed_time: float  # seconds
-    input_tokens: Optional[int]
-    output_tokens: Optional[int]
-    input_price: Optional[float]
-    output_price: Optional[float]
-    total_price: Optional[float]
+    input_tokens: int | None
+    output_tokens: int | None
+    input_price: float | None
+    output_price: float | None
+    total_price: float | None
 
 
 class VLM:
     """
     Base class for Vision Language Models.
-    
+
     Subclasses overriding analyze_image or analyze_image_from_base64 must call
     self._record_metrics(start_time, response) as the last step to ensure metrics are updated.
     """
 
-    call_metrics: Optional[VLMCallMetrics]
+    call_metrics: VLMCallMetrics | None
 
     def __init__(self, model_name: str = None, api_key: str = None, **kwargs):
         """Initialize the VLM with provider-specific parameters"""
         self.model_name = model_name
         self.api_key = api_key
         self.extra_params = kwargs
-        self.call_metrics: Optional[VLMCallMetrics] = None
+        self.call_metrics: VLMCallMetrics | None = None
 
     def encode_image(self, image_path: str) -> str:
         """Encode image to base64"""
         with open(image_path, "rb") as image_file:
             return base64.b64encode(image_file.read()).decode("utf-8")
-    
+
     def encode_image_from_base64(self, base64_image: str) -> str:
         """Use an already encoded base64 image"""
         # If the image already contains the data URL prefix, return as is
@@ -99,46 +100,46 @@ class VLM:
     def analyze_image(self, image_path: str, analysis_type: VLMAnalysisType = VLMAnalysisType.COMPREHENSIVE, **kwargs) -> dict:
         """Analyze image and return results based on analysis type"""
         raise NotImplementedError("Subclasses must implement this method")
-    
+
     def answer_question(self, image_path: str, question: str) -> str:
         """Answer a specific question about an image"""
         return self.analyze_image(image_path, VLMAnalysisType.QUESTION, question=question)
 
-    
+
     def answer_question_from_base64(self, base64_image: str, question: str) -> str:
         """Answer a specific question using a base64-encoded image"""
         result = self.analyze_image_from_base64(base64_image, VLMAnalysisType.QUESTION, question=question)
         if isinstance(result, dict) and "result" in result:
             return self._extract_answer(result.get("result", ""))
         return ""
-    
+
     def analyze_image_from_base64(self, base64_image: str, analysis_type: VLMAnalysisType = VLMAnalysisType.COMPREHENSIVE, **kwargs) -> dict:
         """Analyze a base64-encoded image and return results"""
         raise NotImplementedError("Subclasses must implement this method")
-    
+
     def _extract_answer(self, result: str) -> str:
         """Extract a concise answer from the result text"""
         # Remove common phrases like "The answer is" or "I count"
         result = result.strip()
         answer_prefixes = [
-            "the answer is ", "there are ", "i count ", "i see ", 
+            "the answer is ", "there are ", "i count ", "i see ",
             "the number is ", "the total is ", "the result is "
         ]
-        
+
         # Try to find and remove common prefixes
         lower_result = result.lower()
         for prefix in answer_prefixes:
             if lower_result.startswith(prefix):
                 result = result[len(prefix):]
                 break
-        
+
         # Remove periods and other punctuation at the end
         result = result.rstrip(".!,; ")
-        
+
         return result
 
 
-    def _get_token_counts_from_response(self, response: dict) -> Tuple[Optional[int], Optional[int]]:
+    def _get_token_counts_from_response(self, response: dict) -> tuple[int | None, int | None]:
         """
         Extract input and output token counts from the response. Placeholder for provider-specific logic.
 
@@ -151,8 +152,8 @@ class VLM:
         return None, None
 
     def _calculate_costs(
-        self, input_tokens: Optional[int], output_tokens: Optional[int]
-    ) -> Tuple[Optional[float], Optional[float], Optional[float]]:
+        self, input_tokens: int | None, output_tokens: int | None
+    ) -> tuple[float | None, float | None, float | None]:
         """
         Calculate input, output, and total price. Placeholder for provider-specific logic.
 
@@ -168,13 +169,13 @@ class VLM:
 
 class AzureOpenAIVLM(VLM):
     """Azure OpenAI implementation for VLM"""
-    
-    def __init__(self, model_name: str = "gpt-4.1-mini", api_key: str = None, api_version: str = "2024-12-01-preview", 
+
+    def __init__(self, model_name: str = "gpt-4.1-mini", api_key: str = None, api_version: str = "2024-12-01-preview",
                  endpoint: str = None, **kwargs):
         super().__init__(model_name, api_key, **kwargs)
         self.api_version = api_version
         self.endpoint = endpoint
-        
+
         # Import openai library
         try:
             import openai
@@ -189,7 +190,7 @@ class AzureOpenAIVLM(VLM):
                 if self.model_name not in available_models:
                     print(f"Warning: Model '{self.model_name}' not found in available models.")
                     if available_models and any("gpt-4" in model for model in available_models):
-                        gpt4_models = [model for model in available_models 
+                        gpt4_models = [model for model in available_models
                                       if "gpt-4.1-mini" in model and "vision" in model.lower()]
                         if gpt4_models:
                             print(f"Automatically selecting first available GPT-4.1 vision model: {gpt4_models[0]}")
@@ -205,12 +206,12 @@ class AzureOpenAIVLM(VLM):
             print("Azure OpenAI package not installed. Install with: pip install azure-openai")
         except Exception as e:
             print(f"Error initializing Azure OpenAI client: {e}")
-    
+
     def generate_prompt(self, analysis_type: VLMAnalysisType, **kwargs) -> str:
         """Generate prompt based on analysis type"""
         if analysis_type == VLMAnalysisType.QUESTION and 'question' in kwargs:
             return f"Look at this image and answer the following question concisely: {kwargs['question']}"
-            
+
         prompts = {
             VLMAnalysisType.DESCRIPTION: "Describe the scene in this image in detail.",
             VLMAnalysisType.COUNTING: "Count the number of distinct objects/pieces in this image and list them.",
@@ -223,8 +224,8 @@ class AzureOpenAIVLM(VLM):
 4. Identification of each object with its features (type, color, etc.)"""
         }
         return prompts.get(analysis_type, prompts[VLMAnalysisType.COMPREHENSIVE])
-    
-    def _get_token_counts_from_response(self, response: Any) -> Tuple[Optional[int], Optional[int]]:
+
+    def _get_token_counts_from_response(self, response: Any) -> tuple[int | None, int | None]:
         """
         Extract input and output token counts from the Azure OpenAI response.
         Response structure is based on `response.usage` containing `prompt_tokens` and `completion_tokens`.
@@ -247,11 +248,11 @@ class AzureOpenAIVLM(VLM):
             return None, None
 
     def _calculate_costs(
-        self, input_tokens: Optional[int], output_tokens: Optional[int]
-    ) -> Tuple[Optional[float], Optional[float], Optional[float]]:
+        self, input_tokens: int | None, output_tokens: int | None
+    ) -> tuple[float | None, float | None, float | None]:
         """
         Calculate input, output, and total price for Azure OpenAI models.
-        
+
         TODO: Verify and update with Azure-specific pricing for self.model_name.
         Current placeholders are based on OpenAI's public pricing for similar models.
 
@@ -262,8 +263,8 @@ class AzureOpenAIVLM(VLM):
         Returns:
             A tuple (input_price, output_price, total_price). Returns (None, None, None) if costs cannot be calculated.
         """
-        cost_per_input_token: Optional[float] = None
-        cost_per_output_token: Optional[float] = None
+        cost_per_input_token: float | None = None
+        cost_per_output_token: float | None = None
 
         # Using "gpt-4o-mini" pricing as a reference for "gpt-4.1-mini"
         # Input: $0.15 / 1M tokens => 0.00000015 per token
@@ -286,22 +287,22 @@ class AzureOpenAIVLM(VLM):
             output_price = output_tokens * cost_per_output_token
             total_price = input_price + output_price
             return input_price, output_price, total_price
-        
+
         return None, None, None
-    
-    def analyze_image(self, image_path: str, analysis_type: VLMAnalysisType = VLMAnalysisType.COMPREHENSIVE, 
+
+    def analyze_image(self, image_path: str, analysis_type: VLMAnalysisType = VLMAnalysisType.COMPREHENSIVE,
                      **kwargs) -> dict:
         """Analyze image using Azure OpenAI"""
         base64_image = self.encode_image(image_path)
         return self.analyze_image_from_base64(base64_image, analysis_type, **kwargs)
-    
+
     def analyze_image_from_base64(self, base64_image: str, analysis_type: VLMAnalysisType = VLMAnalysisType.COMPREHENSIVE, **kwargs) -> dict:
         """Analyze a base64-encoded image using Azure OpenAI"""
         prompt = self.generate_prompt(analysis_type, **kwargs)
         # Ensure base64_image has the correct prefix
         if not base64_image.startswith(('data:image/jpeg;base64,', 'data:image/png;base64,')):
             base64_image = f"data:image/jpeg;base64,{base64_image}"
-        
+
         try:
             # print(f"Using model: {self.model_name}")
             start_time = time.time() # Capture start time
@@ -331,7 +332,7 @@ class AzureOpenAIVLM(VLM):
                 current_metrics["output_price"] = output_price
             if total_price is not None:
                 current_metrics["total_price"] = total_price
-            
+
             self.call_metrics = current_metrics
             return {
                 "provider": VLMProvider.AZURE_OPENAI,
@@ -358,13 +359,13 @@ class GroqVLM(VLM):
         try:
             import groq
             self.client = groq.Groq(api_key=self.api_key)
-            
+
             # Test connection and get available models
             try:
                 models = self.client.models.list()
                 self.available_models = [model.id for model in models]
                 print(f"Available Groq models: {', '.join(self.available_models)}")
-                
+
                 # Check if the requested model exists
                 if self.model_name not in self.available_models:
                     print(f"Warning: Model '{self.model_name}' not found in available models.")
@@ -375,7 +376,7 @@ class GroqVLM(VLM):
                         self.model_name = llama_models[0]
             except Exception as e:
                 print(f"Warning: Could not list Groq models: {str(e)}")
-                
+
         except ImportError:
             print("Groq package not installed. Install with: pip install groq")
         except Exception as e:
@@ -385,7 +386,7 @@ class GroqVLM(VLM):
         """Generate prompt based on analysis type"""
         if analysis_type == VLMAnalysisType.QUESTION and 'question' in kwargs:
             return f"Look at this image and answer the following question concisely: {kwargs['question']}"
-            
+
         prompts = {
             VLMAnalysisType.DESCRIPTION: "Describe what you see in this image in detail.",
             VLMAnalysisType.COUNTING: "Count the number of distinct objects/pieces in this image and list them.",
@@ -398,8 +399,8 @@ class GroqVLM(VLM):
                                             4. Identification of each object with its features (type, color, etc.)"""
         }
         return prompts.get(analysis_type, prompts[VLMAnalysisType.COMPREHENSIVE])
-    
-    def _get_token_counts_from_response(self, response: Any) -> Tuple[Optional[int], Optional[int]]:
+
+    def _get_token_counts_from_response(self, response: Any) -> tuple[int | None, int | None]:
         """
         Extract input and output token counts from the Groq response.
         Assumes response.usage contains prompt_tokens and completion_tokens.
@@ -439,12 +440,12 @@ class GroqVLM(VLM):
             return None, None
 
     def _calculate_costs(
-        self, input_tokens: Optional[int], output_tokens: Optional[int]
-    ) -> Tuple[Optional[float], Optional[float], Optional[float]]:
+        self, input_tokens: int | None, output_tokens: int | None
+    ) -> tuple[float | None, float | None, float | None]:
         """
         Calculate input, output, and total price for Groq models.
-        
-        For Groq, cost is explicitly set to None as their pricing is often based on compute time (LPUs) 
+
+        For Groq, cost is explicitly set to None as their pricing is often based on compute time (LPUs)
         or includes generous free tiers not directly tied to per-token costs in the same way as other providers.
         Token counts can still be useful for understanding usage patterns.
 
@@ -458,22 +459,22 @@ class GroqVLM(VLM):
         # Groq's pricing model is different (often LPU-based or large free tiers).
         # Explicitly returning None for costs as per user request.
         return None, None, None
-    
-    def analyze_image(self, image_path: str, analysis_type: VLMAnalysisType = VLMAnalysisType.COMPREHENSIVE, 
+
+    def analyze_image(self, image_path: str, analysis_type: VLMAnalysisType = VLMAnalysisType.COMPREHENSIVE,
                     **kwargs) -> dict:
         """Analyze image using Groq"""
         base64_image = self.encode_image(image_path)
         return self.analyze_image_from_base64(base64_image, analysis_type, **kwargs)
-        
+
     def analyze_image_from_base64(self, base64_image: str, analysis_type: VLMAnalysisType = VLMAnalysisType.COMPREHENSIVE,**kwargs) -> dict:
         """Analyze a base64-encoded image using Groq"""
         start_time = time.time()
         prompt = self.generate_prompt(analysis_type, **kwargs)
-        
+
         # Ensure base64_image has the correct prefix
         if not base64_image.startswith(('data:image/jpeg;base64,', 'data:image/png;base64,')):
             base64_image = f"data:image/jpeg;base64,{base64_image}"
-        
+
         try:
             # Use multimodal approach with image
             response = self.client.chat.completions.create(
@@ -487,7 +488,7 @@ class GroqVLM(VLM):
                 ],
                 max_tokens=1000
             )
-            
+
             elapsed_time = time.time() - start_time
             input_tokens, output_tokens = self._get_token_counts_from_response(response)
             input_price, output_price, total_price = self._calculate_costs(input_tokens, output_tokens)
@@ -498,7 +499,7 @@ class GroqVLM(VLM):
             if input_price is not None: current_metrics["input_price"] = input_price
             if output_price is not None: current_metrics["output_price"] = output_price
             if total_price is not None: current_metrics["total_price"] = total_price
-            
+
             self.call_metrics = current_metrics
             return {
                 "provider": VLMProvider.GROQ,
@@ -511,26 +512,27 @@ class GroqVLM(VLM):
             elapsed_time_on_error = time.time() - start_time
             error_message = str(e)
             print(f"Error with Groq image analysis: {error_message}")
-            
+
             # Fallback to text-only approach if image processing fails
             if "image" in error_message.lower() or "multimodal" in error_message.lower():
                 print("Falling back to text-only approach as this Groq model might not support images")
                 # Note: The fallback itself will set its own call_metrics
                 return self._text_only_fallback(image_path=None, analysis_type=analysis_type, base64_image=base64_image, **kwargs)
-            
+
             self.call_metrics = VLMCallMetrics(elapsed_time=elapsed_time_on_error)
             return {"error": error_message, "call_metrics": self.call_metrics}
-    
+
     def _text_only_fallback(self, image_path: str = None, analysis_type: VLMAnalysisType = None, base64_image: str = None, **kwargs) -> dict:
         """Fallback to text-only approach if image processing is not supported"""
         start_time_fallback = time.time()
         prompt = self.generate_prompt(analysis_type, **kwargs)
-        
+
         # Read image and get basic info
         try:
-            from PIL import Image
             import io
-            
+
+            from PIL import Image
+
             # Get basic image information
             if image_path and os.path.exists(image_path):
                 try:
@@ -538,7 +540,7 @@ class GroqVLM(VLM):
                         width, height = img.size
                         format_type = img.format
                         mode = img.mode
-                        
+
                         # Add image metadata to the prompt
                         image_info = f"\nImage information: {width}x{height} pixels, {format_type} format, {mode} mode"
                         full_prompt = f"{prompt}\n{image_info}\n\nPlease analyze this image based on the above information."
@@ -547,13 +549,13 @@ class GroqVLM(VLM):
                     full_prompt = prompt
             else:
                 full_prompt = prompt
-                
+
         except ImportError:
             print("Warning: PIL/Pillow not installed. Install with: pip install Pillow")
             full_prompt = prompt
-            
+
         print("Note: Using text-only approach for Groq analysis.")
-            
+
         try:
             # Use text-only approach
             response = self.client.chat.completions.create(
@@ -564,7 +566,7 @@ class GroqVLM(VLM):
                 ],
                 max_tokens=1000
             )
-            
+
             elapsed_time_fallback = time.time() - start_time_fallback
             input_tokens_fb, output_tokens_fb = self._get_token_counts_from_response(response)
             input_price_fb, output_price_fb, total_price_fb = self._calculate_costs(input_tokens_fb, output_tokens_fb)
@@ -575,11 +577,11 @@ class GroqVLM(VLM):
             if input_price_fb is not None: fallback_metrics["input_price"] = input_price_fb
             if output_price_fb is not None: fallback_metrics["output_price"] = output_price_fb
             if total_price_fb is not None: fallback_metrics["total_price"] = total_price_fb
-            
+
             # Set self.call_metrics to the fallback metrics when this path is taken
             self.call_metrics = fallback_metrics
             print(f"Groq Call metrics (text_fallback): {self.call_metrics}")
-            
+
             return {
                 "provider": VLMProvider.GROQ,
                 "model": self.model_name,
@@ -615,7 +617,7 @@ class OllamaVLM(VLM):
         """Generate prompt based on analysis type"""
         if analysis_type == VLMAnalysisType.QUESTION and 'question' in kwargs:
             return f"Look at this image and answer the following question concisely: {kwargs['question']}"
-            
+
         prompts = {
             VLMAnalysisType.DESCRIPTION: "Describe the scene in this image in detail.",
             VLMAnalysisType.COUNTING: "Count the number of distinct objects/pieces in this image and list them.",
@@ -629,7 +631,7 @@ class OllamaVLM(VLM):
         }
         return prompts.get(analysis_type, prompts[VLMAnalysisType.COMPREHENSIVE])
 
-    def analyze_image(self, image_path: str, analysis_type: VLMAnalysisType = VLMAnalysisType.COMPREHENSIVE, 
+    def analyze_image(self, image_path: str, analysis_type: VLMAnalysisType = VLMAnalysisType.COMPREHENSIVE,
                     **kwargs) -> dict:
         """Analyze image using Ollama"""
         prompt = self.generate_prompt(analysis_type, **kwargs)
@@ -645,7 +647,7 @@ class OllamaVLM(VLM):
                         "temperature": 0.2,
                     }
                 )
-            
+
             elapsed_time = time.time() - start_time
             input_tokens = response.get("prompt_eval_count")
             output_tokens = response.get("eval_count")
@@ -659,7 +661,7 @@ class OllamaVLM(VLM):
                 "total_price": None
             }
             self.call_metrics = current_metrics
-            
+
             return {
                 "provider": VLMProvider.OLLAMA,
                 "model": self.model_name,
@@ -674,13 +676,13 @@ class OllamaVLM(VLM):
                 input_price=None, output_price=None, total_price=None
             )
             return {"error": str(e), "call_metrics": self.call_metrics}
-            
+
     def analyze_image_from_base64(self, base64_image: str, analysis_type: VLMAnalysisType = VLMAnalysisType.COMPREHENSIVE,
                                 **kwargs) -> dict:
         """Analyze a base64-encoded image using Ollama"""
         prompt = self.generate_prompt(analysis_type, **kwargs)
         start_time = time.time()
-        
+
         try:
             # Save the base64 image temporarily to a file
             import tempfile
@@ -695,13 +697,13 @@ class OllamaVLM(VLM):
                     base64_image_data = base64_image.replace('data:image/png;base64,', '')
             else:
                 base64_image_data = base64_image # Assume it's already just the data
-            
+
             decoded_image_data = base64.b64decode(base64_image_data)
 
             with tempfile.NamedTemporaryFile(delete=False, suffix='.jpg') as temp_file:
                 temp_file.write(decoded_image_data)
                 temp_path = temp_file.name
-            
+
             # Process with the temporary file
             try:
                 response = self.client.generate(
@@ -740,7 +742,7 @@ class OllamaVLM(VLM):
                     os.unlink(temp_path)
                 except Exception as unlink_e: # More specific exception handling if desired
                     print(f"Warning: Could not delete temporary file {temp_path}: {unlink_e}")
-                    
+
             return result
         except Exception as e:
             elapsed_time_on_error = time.time() - start_time
@@ -758,7 +760,7 @@ class HuggingFaceVLM(VLM):
         super().__init__(model_name, api_key, **kwargs)
         self.api_url = f"https://api-inference.huggingface.co/models/{model_name}"
         self.headers = {"Authorization": f"Bearer {api_key}"} if api_key else {}
-        
+
         # Import huggingface_hub if available (for model info)
         try:
             from huggingface_hub import HfApi
@@ -775,7 +777,7 @@ class HuggingFaceVLM(VLM):
         """Generate prompt based on analysis type"""
         if analysis_type == VLMAnalysisType.QUESTION and 'question' in kwargs:
             return f"Look at this image and answer: {kwargs['question']}"
-            
+
         prompts = {
             VLMAnalysisType.DESCRIPTION: "Describe this image in detail.",
             VLMAnalysisType.COUNTING: "Count all objects in this image.",
@@ -785,24 +787,24 @@ class HuggingFaceVLM(VLM):
         }
         return prompts.get(analysis_type, prompts[VLMAnalysisType.COMPREHENSIVE])
 
-    def analyze_image(self, image_path: str, analysis_type: VLMAnalysisType = VLMAnalysisType.COMPREHENSIVE, 
+    def analyze_image(self, image_path: str, analysis_type: VLMAnalysisType = VLMAnalysisType.COMPREHENSIVE,
                      **kwargs) -> dict:
         """Analyze image using HuggingFace"""
         base64_image = self.encode_image(image_path)
         return self.analyze_image_from_base64(base64_image, analysis_type, **kwargs)
-        
+
     def analyze_image_from_base64(self, base64_image: str, analysis_type: VLMAnalysisType = VLMAnalysisType.COMPREHENSIVE,
                                  **kwargs) -> dict:
         """Analyze a base64-encoded image using HuggingFace"""
         prompt = self.generate_prompt(analysis_type, **kwargs)
-        
+
         # Remove data URL prefix if present
         if base64_image.startswith(('data:image/jpeg;base64,', 'data:image/png;base64,')):
             if 'jpeg' in base64_image:
                 base64_image = base64_image.replace('data:image/jpeg;base64,', '')
             else:
                 base64_image = base64_image.replace('data:image/png;base64,', '')
-        
+
         try:
             # Prepare payload based on model capabilities
             if "/blip-" in self.model_name.lower() or "image-to-text" in self.model_name.lower():
@@ -830,10 +832,10 @@ class HuggingFaceVLM(VLM):
             # Make API call
             response = requests.post(self.api_url, headers=self.headers, json=payload)
             response.raise_for_status()
-            
+
             # Process response - format varies based on model type
             response_json = response.json()
-            
+
             # Handle different response formats
             if isinstance(response_json, list) and len(response_json) > 0:
                 if isinstance(response_json[0], dict) and "generated_text" in response_json[0]:
@@ -849,7 +851,7 @@ class HuggingFaceVLM(VLM):
                     result = str(response_json)
             else:
                 result = str(response_json)
-                
+
             return {
                 "provider": VLMProvider.HUGGINGFACE,
                 "model": self.model_name,
@@ -871,11 +873,11 @@ class HuggingFaceVLM(VLM):
 
 class VLMQuestionHandler:
     """Handler for processing questions with VLMs"""
-    
+
     def __init__(self, provider: VLMProvider = None, **kwargs):
         """
         Initialize the VLM Question Handler.
-        
+
         Args:
             provider: VLM provider to use. If None, will auto-select based on available credentials
             **kwargs: Additional arguments to pass to the VLM provider
@@ -891,55 +893,55 @@ class VLMQuestionHandler:
             else:
                 # Default to Ollama as it's local and doesn't require API keys
                 provider = VLMProvider.OLLAMA
-            
+
             print(f"Auto-selected VLM provider: {provider.value}")
-        
+
         # Initialize the VLM
         self.vlm = get_vlm(provider, **kwargs)
         self.provider = provider
-    
-    def process_questions(self, image_path: str, questions: List[str]) -> List[str]:
+
+    def process_questions(self, image_path: str, questions: list[str]) -> list[str]:
         """
         Process a list of questions about an image using the VLM.
-        
+
         Args:
             image_path: Path to the image file
             questions: List of questions to ask about the image
-            
+
         Returns:
             List of answers from the VLM
         """
         answers = []
-        
+
         # Check if the image exists
         if not os.path.exists(image_path):
             raise FileNotFoundError(f"Image file not found: {image_path}")
-        
+
         # Process each question
         for question in questions:
             answer = self.vlm.answer_question(image_path, question)
             answers.append(answer)
-            
+
         return answers
-    
-    def process_questions_from_base64(self, base64_image: str, questions: List[str]) -> List[str]:
+
+    def process_questions_from_base64(self, base64_image: str, questions: list[str]) -> list[str]:
         """
         Process a list of questions about a base64-encoded image.
-        
+
         Args:
             base64_image: Base64-encoded image string
             questions: List of questions to ask about the image
-            
+
         Returns:
             List of answers from the VLM
         """
         answers = []
-        
+
         # Process each question
         for question in questions:
             answer = self.vlm.answer_question_from_base64(base64_image, question)
             answers.append(answer)
-            
+
         return answers
 
 
@@ -1186,7 +1188,7 @@ if __name__ == "__main__":
                                     model_ids.append(model['id'])
                                 elif isinstance(model, tuple) and len(model) > 0:
                                     model_ids.append(str(model[0]))
-                            
+
                             for model_id in model_ids:
                                 print(f"- {model_id}")
 

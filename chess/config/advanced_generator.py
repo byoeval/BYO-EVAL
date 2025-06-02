@@ -1,30 +1,27 @@
 import random
-import os
-from typing import Dict, List, Tuple, Union, Optional, Any
+from typing import Any
 
 from .advanced_models import (
+    CountSpecificationType,
+    PieceCountModel,
+    PiecePosition,
     PieceTypeModel,
-    PieceCountModel, CountSpecificationType,
-    PiecePosition
 )
-
-from .models import (
-    BoardModel, PieceModel, MaterialModel, GeometryModel
-)
+from .models import BoardModel, GeometryModel, MaterialModel, PieceModel
 
 
 class PieceCountGenerator:
     """Generator for piece counts based on various configuration types."""
-    
+
     def __init__(
-        self, 
-        config: Union[str, int, Tuple[int, int], List[Tuple[str, int]], List[Tuple[str, Tuple[int, int]]], Dict[str, Any], PieceCountModel],
+        self,
+        config: str | int | tuple[int, int] | list[tuple[str, int]] | list[tuple[str, tuple[int, int]]] | dict[str, Any] | PieceCountModel,
         randomization: bool = False,
-        seed: Optional[int] = None
+        seed: int | None = None
     ):
         """
         Initialize the piece count generator.
-        
+
         Args:
             config: Configuration for piece counts, can be:
                    - str: preset like "low", "medium", "high"
@@ -38,11 +35,11 @@ class PieceCountGenerator:
             seed: Random seed for reproducibility
         """
         self.randomization = randomization
-        
+
         # Set random seed if provided
         if seed is not None:
             random.seed(seed)
-        
+
         # Convert config to appropriate object based on type
         if isinstance(config, str):
             self.config = PieceCountModel.from_preset(config, randomization)
@@ -71,11 +68,11 @@ class PieceCountGenerator:
             self.config = config
         else:
             raise ValueError(f"Invalid config type: {type(config)}")
-    
-    def _get_allowed_types(self) -> List[str]:
+
+    def _get_allowed_types(self) -> list[str]:
         """
         Determine which piece types are allowed based on the configuration.
-        
+
         Returns:
             List of allowed piece types
         """
@@ -87,53 +84,53 @@ class PieceCountGenerator:
             # For PRESET, FIXED, and RANGE types, we need to get types from PieceTypeGenerator
             # This will be handled in generate() method
             return []
-    
-    def generate(self, board_dims: Tuple[int, int] = (8, 8), available_types: Optional[List[str]] = None) -> Dict[str, int]:
+
+    def generate(self, board_dims: tuple[int, int] = (8, 8), available_types: list[str] | None = None) -> dict[str, int]:
         """
         Generate piece counts.
-        
+
         Args:
             board_dims: Board dimensions (rows, columns)
-            
+
         Returns:
             Dictionary mapping piece types to counts
         """
         # Get allowed types based on configuration
         allowed_types = self._get_allowed_types()
-        
+
         # If no types are specified in the configuration, use provided available_types
         if not allowed_types:
             if available_types is None:
                 raise ValueError("available_types must be provided for PRESET, FIXED, or RANGE configurations")
             allowed_types = available_types
-        
+
         # Get raw counts from config
         raw_counts = self.config.generate_counts()
-        
+
         # Handle special cases
         if "_total_" in raw_counts:
             total_count = raw_counts["_total_"]
             # Cap total count to board size
             max_pieces = board_dims[0] * board_dims[1]
             total_count = min(total_count, max_pieces)
-            
+
             # Distribute total count among allowed types
             return self._distribute_total_count(total_count, allowed_types)
-        
+
         # Handle explicit counts
         result = {}
         for piece_type, count in raw_counts.items():
             if piece_type not in allowed_types:
                 continue
-                
+
             if isinstance(count, dict) and "min" in count and "max" in count:
                 # Range by type
                 min_val = count["min"]
                 max_val = count["max"]
                 count = random.randint(min_val, max_val)
-            
+
             result[piece_type] = max(0, count)  # Ensure no negative counts
-        
+
         # Ensure we don't exceed board capacity
         max_pieces = board_dims[0] * board_dims[1]
         total = sum(result.values())
@@ -142,45 +139,45 @@ class PieceCountGenerator:
             scale_factor = max_pieces / total
             for piece_type in result:
                 result[piece_type] = max(0, int(result[piece_type] * scale_factor))
-        
+
         return result
-    
-    def _distribute_total_count(self, total_count: int, available_types: List[str]) -> Dict[str, int]:
+
+    def _distribute_total_count(self, total_count: int, available_types: list[str]) -> dict[str, int]:
         """
         Randomly distribute a total count among available piece types.
-        
+
         Args:
             total_count: Total number of pieces
             available_types: Available piece types from PieceTypeGenerator
-            
+
         Returns:
             Dictionary mapping piece types to counts
         """
         if not available_types:
             return {}
-            
+
         # Initialize counts to 0 for all available types
         result = {piece_type: 0 for piece_type in available_types}
-        
+
         # Randomly assign each piece to a type
         for _ in range(total_count):
             piece_type = random.choice(available_types)
             result[piece_type] += 1
-        
+
         return result
 
 
 class PieceTypeGenerator:
     """Generator for piece types."""
-    
+
     def __init__(
-        self, 
-        config: Union[str, List[str], int, Dict[str, Any], PieceTypeModel],
-        seed: Optional[int] = None
+        self,
+        config: str | list[str] | int | dict[str, Any] | PieceTypeModel,
+        seed: int | None = None
     ):
         """
         Initialize the piece type generator.
-        
+
         Args:
             config: Configuration for piece types, can be:
                    - str: preset like "low", "medium", "high"
@@ -193,7 +190,7 @@ class PieceTypeGenerator:
         # Set random seed if provided
         if seed is not None:
             random.seed(seed)
-        
+
         # Convert config to appropriate object based on type
         if isinstance(config, str):
             self.config = PieceTypeModel.from_preset(config)
@@ -207,11 +204,11 @@ class PieceTypeGenerator:
             self.config = config
         else:
             raise ValueError(f"Invalid config type: {type(config)}")
-    
-    def generate(self) -> List[str]:
+
+    def generate(self) -> list[str]:
         """
         Generate list of piece types based on configuration.
-        
+
         Returns:
             List of selected piece types
         """
@@ -220,15 +217,15 @@ class PieceTypeGenerator:
 
 class PiecePositionGenerator:
     """Generator for piece positions based on configuration."""
-    
+
     def __init__(
-        self, 
-        config: Union[str, Dict[str, Any], PiecePosition, List[Tuple[int, int]], Tuple[str, Union[str, Tuple[int, int]]], None] = None,
-        seed: Optional[int] = None
+        self,
+        config: str | dict[str, Any] | PiecePosition | list[tuple[int, int]] | tuple[str, str | tuple[int, int]] | None = None,
+        seed: int | None = None
     ):
         """
         Initialize the piece position generator.
-        
+
         Args:
             config: Configuration for positions, can be:
                    - str: "low", "medium", "high" spread level
@@ -242,7 +239,7 @@ class PiecePositionGenerator:
         # Set random seed if provided
         if seed is not None:
             random.seed(seed)
-        
+
         # Convert config to appropriate object based on type
         if config is None:
             self.config = PiecePosition()
@@ -261,40 +258,40 @@ class PiecePositionGenerator:
             self.config = PiecePosition.from_spread(config[0], config[1])
         else:
             raise ValueError(f"Invalid config type: {type(config)}")
-    
-    def generate(self, count: int, board_dims: Tuple[int, int] = (8, 8)) -> List[Tuple[int, int]]:
+
+    def generate(self, count: int, board_dims: tuple[int, int] = (8, 8)) -> list[tuple[int, int]]:
         """
         Generate positions for pieces.
-        
+
         Args:
             count: Number of positions to generate
             board_dims: Board dimensions (rows, columns)
-            
+
         Returns:
             List of (row, column) positions
         """
         # Delegate to the PiecePosition class's generate_positions method
         positions = self.config.generate_positions(count, board_dims)
-        
+
         # Ensure we don't return more positions than requested
         return positions[:min(count, len(positions))]
 
 
 class ChessConfigGenerator:
     """Generator for complete chess configurations."""
-    
+
     def __init__(
         self,
-        count_config: Union[str, int, Tuple[int, int], List[Tuple[str, int]], List[Tuple[str, Tuple[int, int]]], Dict[str, Any], PieceCountModel] = "medium",
-        type_config: Union[str, List[str], int, Dict[str, Any], PieceTypeModel] = "medium",
-        position_config: Union[str, Dict[str, Any], PiecePosition, List[Tuple[int, int]], Tuple[str, Union[str, Tuple[int, int]]], None] = None,
-        board_config: Optional[Dict[str, Any]] = None,
+        count_config: str | int | tuple[int, int] | list[tuple[str, int]] | list[tuple[str, tuple[int, int]]] | dict[str, Any] | PieceCountModel = "medium",
+        type_config: str | list[str] | int | dict[str, Any] | PieceTypeModel = "medium",
+        position_config: str | dict[str, Any] | PiecePosition | list[tuple[int, int]] | tuple[str, str | tuple[int, int]] | None = None,
+        board_config: dict[str, Any] | None = None,
         randomization: bool = False,
-        seed: Optional[int] = None
+        seed: int | None = None
     ):
         """
         Initialize the chess configuration generator.
-        
+
         Args:
             count_config: Configuration for piece counts, can be:
                        - str: preset like "low", "medium", "high"
@@ -318,20 +315,22 @@ class ChessConfigGenerator:
         # Set random seed if provided
         if seed is not None:
             random.seed(seed)
-            local_seed = lambda: random.randint(0, 1000000)
+            def local_seed():
+                return random.randint(0, 1000000)
         else:
-            local_seed = lambda: None
-        
+            def local_seed():
+                return None
+
         # Initialize generators
         self.count_generator = PieceCountGenerator(count_config, randomization, local_seed())
         self.type_generator = PieceTypeGenerator(type_config, local_seed())
         self.position_generator = PiecePositionGenerator(position_config, local_seed())
-        
+
         # Store board configuration
         self.board_config = board_config
         self.initial_board_config = board_config # Store optional initial board config
-    
-    def generate_board_config(self, rows: Optional[int] = None, columns: Optional[int] = None) -> Dict[str, Any]:
+
+    def generate_board_config(self, rows: int | None = None, columns: int | None = None) -> dict[str, Any]:
         """
         Generate board configuration, allowing overrides for rows and columns.
 
@@ -357,14 +356,14 @@ class ChessConfigGenerator:
         if columns is not None: board_model.columns = columns
 
         return board_model.to_dict()
-    
-    def generate_pieces_config(self, board_config: Dict[str, Any]) -> Dict[str, Dict[str, Any]]:
+
+    def generate_pieces_config(self, board_config: dict[str, Any]) -> dict[str, dict[str, Any]]:
         """
         Generate piece configurations.
-        
+
         Args:
             board_config: Board configuration dictionary
-            
+
         Returns:
             Dictionary mapping piece IDs to piece configuration dictionaries
         """
@@ -372,20 +371,20 @@ class ChessConfigGenerator:
         rows = board_config.get("rows", 8)
         columns = board_config.get("columns", 8)
         board_dims = (rows, columns)
-        
+
         # Generate piece types to use
         selected_types = self.type_generator.generate()
-        
+
         # Generate piece counts with available types
         piece_counts = self.count_generator.generate(board_dims, available_types=selected_types)
-        
+
         # Generate positions for all pieces
         positions = self.position_generator.generate(sum(piece_counts.values()), board_dims)
-        
+
         # Create piece configurations
         pieces_config = {}
         position_index = 0
-        
+
         for piece_type, count in piece_counts.items():
             for i in range(count):
                 # Get position
@@ -396,10 +395,10 @@ class ChessConfigGenerator:
                     # Fallback if not enough positions (shouldn't happen with proper scaling)
                     print("Warning: Not enough positions available")
                     break
-                
+
                 # Generate color
                 color = random.choice(["white", "black"])
-                
+
                 # Create piece config
                 piece_id = f"{piece_type}_{i+1}"
                 piece_config = PieceModel(
@@ -409,13 +408,13 @@ class ChessConfigGenerator:
                     geometry=GeometryModel()
                 )
                 pieces_config[piece_id] = piece_config.to_dict()
-        
+
         return pieces_config
-    
-    def generate_all_configs(self, rows: Optional[int] = None, columns: Optional[int] = None) -> Tuple[Dict[str, Any], Dict[str, Dict[str, Any]]]:
+
+    def generate_all_configs(self, rows: int | None = None, columns: int | None = None) -> tuple[dict[str, Any], dict[str, dict[str, Any]]]:
         """
         Generate both board and pieces configurations, accepting row/column overrides.
-        
+
         Returns:
             Tuple containing board config dictionary and pieces config dictionary
         """
@@ -429,4 +428,4 @@ class ChessConfigGenerator:
         # Generate pieces using the final board config (which has correct dimensions)
         pieces_config = self.generate_pieces_config(board_config)
         # Note: generate_pieces_config internally extracts dims from the passed board_config
-        return board_config, pieces_config 
+        return board_config, pieces_config

@@ -1,9 +1,10 @@
-import pandas as pd
+from typing import Any
+
 import numpy as np
-from typing import Any, Dict, Tuple, Union, List, Optional
+import pandas as pd
 
 
-def compute_regression_stats(preds: Union[np.ndarray, pd.Series], targets: Union[np.ndarray, pd.Series]) -> Dict[str, Any]:
+def compute_regression_stats(preds: np.ndarray | pd.Series, targets: np.ndarray | pd.Series) -> dict[str, Any]:
     """
     Compute extensive regression and distribution statistics for predictions and targets.
     Handles missing values robustly.
@@ -98,7 +99,7 @@ class MetricsCalculator:
     Calculates various metrics based on prediction and target values in a DataFrame.
     """
 
-    def __init__(self, df: pd.DataFrame, group_by_cols: Optional[List[str]] = None):
+    def __init__(self, df: pd.DataFrame, group_by_cols: list[str] | None = None):
         """
         Initializes the MetricsCalculator with a DataFrame.
 
@@ -110,7 +111,7 @@ class MetricsCalculator:
         """
         if not isinstance(df, pd.DataFrame):
             raise TypeError("Input must be a pandas DataFrame.")
-        
+
         # check if columns are pred and target and add an s if not
         if 'pred' in df.columns and 'target' in df.columns:
             df.rename(columns={'pred': 'preds', 'target': 'targets'}, inplace=True)
@@ -121,7 +122,7 @@ class MetricsCalculator:
 
         if 'preds' not in df.columns or 'targets' not in df.columns:
             raise ValueError("DataFrame must contain 'preds' and 'targets' columns.")
-        
+
         self.df = df.copy()
         self.target_type: str = "unknown"
         self.target_dims: int = 0
@@ -152,13 +153,13 @@ class MetricsCalculator:
                     continue
                 first_valid_target = target
                 break
-        
+
         if first_valid_target is None: # All targets are None or pd.NA
             self.target_type = "all_na"
             self.target_dims = 0
             return
 
-        if isinstance(first_valid_target, (int, float)):
+        if isinstance(first_valid_target, int | float):
             self.target_type = "numeric"
             self.target_dims = 1
         elif isinstance(first_valid_target, str):
@@ -168,14 +169,14 @@ class MetricsCalculator:
             self.target_type = "tuple"
             self.target_dims = len(first_valid_target)
             if self.target_dims > 0:
-                self.is_numeric_tuple = all(isinstance(x, (int, float)) for x in first_valid_target)
+                self.is_numeric_tuple = all(isinstance(x, int | float) for x in first_valid_target)
             else: # Empty tuple
                 self.is_numeric_tuple = False
         else:
             self.target_type = "other"
             self.target_dims = 1 # Or handle as an error/unknown
 
-    def _calculate_numeric_metrics_for_series(self, targets: pd.Series, preds: pd.Series) -> Dict[str, float]:
+    def _calculate_numeric_metrics_for_series(self, targets: pd.Series, preds: pd.Series) -> dict[str, float]:
         """
         Calculates numeric metrics for a single dimension (series).
 
@@ -222,12 +223,12 @@ class MetricsCalculator:
             "count": len(targets)
         }
 
-    def calculate_numeric_metrics(self) -> Union[Dict[str, float], List[Dict[str, float]], None]:
+    def calculate_numeric_metrics(self) -> dict[str, float] | list[dict[str, float]] | None:
         """
         Calculates numeric metrics (MAE, NMAE, MSE, RMSE).
 
         Returns:
-            Union[Dict[str, float], List[Dict[str, float]], None]: 
+            Union[Dict[str, float], List[Dict[str, float]], None]:
             Metrics for single numeric targets, list of metrics for tuple targets (per dimension),
             or None if targets are not numeric.
         """
@@ -235,7 +236,7 @@ class MetricsCalculator:
             # Ensure 'targets' and 'preds' are numeric, coercing errors to NaN
             targets_numeric = pd.to_numeric(self.df['targets'], errors='coerce')
             preds_numeric = pd.to_numeric(self.df['preds'], errors='coerce')
-            
+
             # Filter out NaNs that may have resulted from coercion or were pre-existing
             valid_idx = targets_numeric.notna() & preds_numeric.notna()
             targets_filtered = targets_numeric[valid_idx]
@@ -269,7 +270,7 @@ class MetricsCalculator:
                 # Coerce to numeric and handle NaNs
                 targets_dim_i_numeric = pd.to_numeric(targets_dim_i, errors='coerce')
                 preds_dim_i_numeric = pd.to_numeric(preds_dim_i, errors='coerce')
-                
+
                 valid_idx = targets_dim_i_numeric.notna() & preds_dim_i_numeric.notna()
                 targets_filtered = targets_dim_i_numeric[valid_idx]
                 preds_filtered = preds_dim_i_numeric[valid_idx]
@@ -286,7 +287,7 @@ class MetricsCalculator:
         else:
             return None # Not numeric or numeric tuple
 
-    def calculate_accuracy_metrics(self) -> Dict[str, float]:
+    def calculate_accuracy_metrics(self) -> dict[str, float]:
         """
         Calculates accuracy metrics.
 
@@ -311,7 +312,7 @@ class MetricsCalculator:
 
 
         is_correct = self.df.apply(safe_compare, axis=1)
-        
+
         count = len(is_correct)
         if count == 0:
             return {"mean_accuracy": np.nan, "std_accuracy": np.nan, "count": 0}
@@ -325,7 +326,7 @@ class MetricsCalculator:
             "count": count
         }
 
-    def calculate_all_metrics(self) -> Dict[str, Any]:
+    def calculate_all_metrics(self) -> dict[str, Any]:
         """
         Calculates all relevant metrics based on the target type.
 
@@ -344,22 +345,22 @@ class MetricsCalculator:
         numeric_metrics_result = self.calculate_numeric_metrics()
         if numeric_metrics_result is not None:
             results["numeric_metrics"] = numeric_metrics_result
-        
+
         return results
 
-    def calculate_grouped_metrics(self) -> List[Dict[str, Any]]:
+    def calculate_grouped_metrics(self) -> list[dict[str, Any]]:
         """
         Calculates metrics for each group defined by `group_by_cols`.
 
         Returns:
-            List[Dict[str, Any]]: A list of dictionaries, where each dictionary contains 
-                                  'group_values' (a dict of column:value for the group) and 
+            List[Dict[str, Any]]: A list of dictionaries, where each dictionary contains
+                                  'group_values' (a dict of column:value for the group) and
                                   'metrics' (the result of calculate_all_metrics() for that group).
                                   Returns an empty list if group_by_cols was not provided or is empty.
         """
         if not self.group_by_cols:
             # Or print a warning, or return None, depending on desired behavior
-            return [] 
+            return []
 
         # Ensure all group_by_cols actually exist to prevent KeyError in groupby
         missing_cols = [col for col in self.group_by_cols if col not in self.df.columns]
@@ -374,28 +375,28 @@ class MetricsCalculator:
             # This should be caught by the check above, but as a safeguard:
             raise ValueError(f"Error during groupby operation. Ensure all group_by_cols exist: {e}")
 
-        all_grouped_metrics_results: List[Dict[str, Any]] = []
+        all_grouped_metrics_results: list[dict[str, Any]] = []
 
         for group_name_tuple, group_df in grouped_data:
             if group_df.empty:
                 continue # Skip empty groups
 
-            group_values_dict: Dict[str, Any] = {}
+            group_values_dict: dict[str, Any] = {}
             if isinstance(group_name_tuple, tuple):
-                group_values_dict = dict(zip(self.group_by_cols, group_name_tuple))
+                group_values_dict = dict(zip(self.group_by_cols, group_name_tuple, strict=False))
             else: # Single grouping column
                 group_values_dict = {self.group_by_cols[0]: group_name_tuple}
-            
+
             # Create a temporary calculator for this specific group_df
             # Do not pass group_by_cols to this temp instance, as we want its overall metrics.
-            temp_calculator = MetricsCalculator(group_df.copy()) 
+            temp_calculator = MetricsCalculator(group_df.copy())
             group_metrics = temp_calculator.calculate_all_metrics()
 
             all_grouped_metrics_results.append({
                 "group_values": group_values_dict,
                 "metrics": group_metrics
             })
-        
+
         return all_grouped_metrics_results
 
     def calculate_per_level_metrics(self, variable: str) -> pd.DataFrame:
@@ -438,10 +439,10 @@ class MetricsCalculator:
             variable2 (str): The second column name to group by.
 
         Returns:
-            pd.DataFrame: DataFrame with each row representing a unique combination of 
-                          variable1 and variable2 levels. Columns include variable1, variable2, 
+            pd.DataFrame: DataFrame with each row representing a unique combination of
+                          variable1 and variable2 levels. Columns include variable1, variable2,
                           and all metrics from compute_regression_stats (mae, mse, count, etc.).
-        
+
         Raises:
             ValueError: If variable1 or variable2 are not in the DataFrame.
         """
@@ -457,18 +458,18 @@ class MetricsCalculator:
         for (level1, level2), group_df in self.df.groupby([variable1, variable2], dropna=False):
             if group_df.empty:
                 continue
-            
+
             preds = pd.to_numeric(group_df['preds'], errors='coerce')
             targets = pd.to_numeric(group_df['targets'], errors='coerce')
-            
+
             stats = compute_regression_stats(preds, targets) # This is the global function
-            
+
             row = {variable1: level1, variable2: level2}
             row.update(stats)
             results.append(row)
-        
+
         cross_stats_df = pd.DataFrame(results)
-        
+
         # Attempt to sort by the variable columns for consistent output, handling potential mixed types
         if not cross_stats_df.empty:
             try:
@@ -492,7 +493,7 @@ if __name__ == '__main__':
     except ImportError:
         print("Rich library not found. Plain print will be used for output.")
 
-    def display_results(metrics_dict: Dict[str, Any], title: str, grouped_metrics_list: Optional[List[Dict[str,Any]]] = None):
+    def display_results(metrics_dict: dict[str, Any], title: str, grouped_metrics_list: list[dict[str, Any]] | None = None):
         if isinstance(console, pd.Series): # rich not available
             print(f"\\n--- {title} ---")
             import json
@@ -505,16 +506,16 @@ if __name__ == '__main__':
 
         console.print(f"\\n[bold cyan]--- {title} ---[/bold cyan]")
         console.print("[u]Overall Metrics:[/u]")
-        
+
         type_info = metrics_dict.get("target_type_info", {})
-        console.print(f"[bold]Target Type Analysis:[/bold]")
+        console.print("[bold]Target Type Analysis:[/bold]")
         console.print(f"  Type: {type_info.get('type')}")
         console.print(f"  Dimensions: {type_info.get('dimensions')}")
         console.print(f"  Is Numeric Tuple: {type_info.get('is_numeric_tuple')}")
 
         acc_metrics = metrics_dict.get("accuracy_metrics")
         if acc_metrics:
-            console.print(f"\\n[bold]Accuracy Metrics:[/bold]")
+            console.print("\\n[bold]Accuracy Metrics:[/bold]")
             table = Table(show_header=True, header_style="bold magenta")
             table.add_column("Metric", style="dim")
             table.add_column("Value")
@@ -525,7 +526,7 @@ if __name__ == '__main__':
 
         num_metrics = metrics_dict.get("numeric_metrics")
         if num_metrics:
-            console.print(f"\\n[bold]Numeric Metrics:[/bold]")
+            console.print("\\n[bold]Numeric Metrics:[/bold]")
             if isinstance(num_metrics, list): # Tuple metrics
                 for i, dim_metrics in enumerate(num_metrics):
                     console.print(f"  [italic]Dimension {i}:[/italic]")
@@ -552,7 +553,7 @@ if __name__ == '__main__':
                 console.print(num_table)
 
         if grouped_metrics_list:
-            console.print(f"\n[u]Grouped Metrics:[/u]")
+            console.print("\n[u]Grouped Metrics:[/u]")
             if not grouped_metrics_list:
                 console.print("  No groups to display or group_by_cols not specified.")
                 return
@@ -560,24 +561,24 @@ if __name__ == '__main__':
             for item in grouped_metrics_list:
                 group_vals_str = ", ".join([f"{k}='{v}'" for k, v in item['group_values'].items()])
                 console.print(f"\n  [bold yellow]Group: {group_vals_str}[/bold yellow]")
-                
+
                 group_type_info = item['metrics'].get("target_type_info", {})
                 console.print(f"    Target Type: {group_type_info.get('type')}, Dims: {group_type_info.get('dimensions')}, Numeric Tuple: {group_type_info.get('is_numeric_tuple')}")
                 console.print(f"    Count for this group: {item['metrics'].get('accuracy_metrics', {}).get('count', 0)}")
 
                 acc_metrics_group = item['metrics'].get("accuracy_metrics")
                 if acc_metrics_group and acc_metrics_group.get('count', 0) > 0:
-                    console.print(f"    [bold]Accuracy Metrics (Group):[/bold]")
+                    console.print("    [bold]Accuracy Metrics (Group):[/bold]")
                     acc_table_group = Table(show_header=True, header_style="bold magenta")
                     acc_table_group.add_column("Metric", style="dim")
                     acc_table_group.add_column("Value")
                     acc_table_group.add_row("Mean Accuracy", f"{acc_metrics_group.get('mean_accuracy', np.nan):.4f}")
                     acc_table_group.add_row("Std Accuracy (Indicator)", f"{acc_metrics_group.get('std_accuracy', np.nan):.4f}")
                     console.print(acc_table_group)
-                
+
                 num_metrics_group = item['metrics'].get("numeric_metrics")
                 if num_metrics_group:
-                    console.print(f"    [bold]Numeric Metrics (Group):[/bold]")
+                    console.print("    [bold]Numeric Metrics (Group):[/bold]")
                     if isinstance(num_metrics_group, list): # Tuple metrics for the group
                         for i, dim_metrics in enumerate(num_metrics_group):
                             if dim_metrics.get('count', 0) > 0:
@@ -630,7 +631,7 @@ if __name__ == '__main__':
     calc_tuple_numeric = MetricsCalculator(df_tuple_numeric)
     results_tuple_numeric = calc_tuple_numeric.calculate_all_metrics()
     display_results(results_tuple_numeric, "Numeric Tuple Data Metrics")
-    
+
     # 4. Mixed Tuple Data (Non-Numeric elements)
     data_tuple_mixed = {
         'preds': [(1, "a"), ("b", 20), (3, "c")],
@@ -650,7 +651,7 @@ if __name__ == '__main__':
     calc_nans = MetricsCalculator(df_nans)
     results_nans = calc_nans.calculate_all_metrics()
     display_results(results_nans, "Data with NaNs Metrics")
-    
+
     # 6. Data with pd.NA
     data_pd_na = {
         'preds': [1, pd.NA, 3, "test", pd.NA],
@@ -660,7 +661,7 @@ if __name__ == '__main__':
     calc_pd_na = MetricsCalculator(df_pd_na)
     results_pd_na = calc_pd_na.calculate_all_metrics()
     display_results(results_pd_na, "Data with pd.NA Metrics")
-    
+
     # 7. Empty DataFrame
     df_empty = pd.DataFrame({'preds': [], 'targets': []})
     calc_empty = MetricsCalculator(df_empty)
@@ -717,7 +718,7 @@ if __name__ == '__main__':
         'var2':    [100,  100,  200,  200,  100,  100,  100,  200,  200,  100,  100,  200]
     }
     df_grouped = pd.DataFrame(data_grouped)
-    
+
     # Calculate with grouping
     group_cols = ['var1', 'var2']
     calc_grouped = MetricsCalculator(df_grouped, group_by_cols=group_cols)
@@ -741,16 +742,16 @@ if __name__ == '__main__':
 
     # practictal test with diagnostic_results/diagnostic_evaluation_results_gemma_20250508_004823.csv
     df_diagnostic = pd.read_csv("diagnostic_results/diagnostic_evaluation_results_gemma_20250508_120051.csv")
-    
+
     group_cols = ['number']
 
     calc_diagnostic = MetricsCalculator(df_diagnostic, group_by_cols=group_cols)
-    
+
     results_diagnostic = calc_diagnostic.calculate_all_metrics()
     grouped_metrics_list_diagnostic = calc_diagnostic.calculate_grouped_metrics()
     display_results(results_diagnostic, "Diagnostic Evaluation Results")
-    
-    # For displaying only grouped metrics, pass an empty dict for the first argument 
+
+    # For displaying only grouped metrics, pass an empty dict for the first argument
     # and the actual list of grouped metrics for the third argument.
     display_results({}, "Diagnostic Evaluation Results Grouped by number", grouped_metrics_list_diagnostic)
 

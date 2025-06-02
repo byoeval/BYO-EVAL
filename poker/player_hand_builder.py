@@ -1,24 +1,29 @@
-import bpy
-import random
 import math
+import random
+from typing import Any
+
+import bpy
 from mathutils import Vector
-from typing import Union, List, Dict, Any, Tuple, Optional
 
 # Models and Loader
-from poker.config.models import PlayerHandModel, CardModel
 from poker.config.models import (
-    DEFAULT_CARD_WIDTH, DEFAULT_CARD_HEIGHT,
-    MIN_CENTER_GAP_FACTOR_X, MAX_CENTER_GAP_FACTOR_X,
-    MIN_CENTER_GAP_FACTOR_Y, MAX_CENTER_GAP_FACTOR_Y,
-    DEFAULT_Z_ROTATION
+    DEFAULT_CARD_HEIGHT,
+    DEFAULT_CARD_WIDTH,
+    DEFAULT_Z_ROTATION,
+    MAX_CENTER_GAP_FACTOR_X,
+    MAX_CENTER_GAP_FACTOR_Y,
+    MIN_CENTER_GAP_FACTOR_X,
+    MIN_CENTER_GAP_FACTOR_Y,
+    CardModel,
+    PlayerHandModel,
 )
 from poker.load_card import PokerCardLoader
 
-# --- Constants --- 
+# --- Constants ---
 TINY_Z_STEP = 0.0007 # To prevent z-fighting (Increased step for testing overlap artifacts)
 
-def _calculate_gap(spread_factor: float, base_size: float, scale: float, 
-                   min_factor: float, max_factor: float, 
+def _calculate_gap(spread_factor: float, base_size: float, scale: float,
+                   min_factor: float, max_factor: float,
                    randomize: bool = False) -> float:
     """
     Calculates the target distance between card centers based on spread factor and scale.
@@ -52,18 +57,18 @@ def _calculate_center_facing_rotation(x: float, y: float) -> float:
     """
     Calculate the rotation angle needed for a card to face the center (0,0),
     attenuated based on the angle of the hand's location relative to the Y-axis.
-    
+
     Args:
         x: X coordinate of the card (vertical axis in user's perspective)
         y: Y coordinate of the card (horizontal axis in user's perspective)
-        
+
     Returns:
         The attenuated rotation angle in radians.
     """
     # Calculate the angle needed to point directly at the center
     angle_to_center = math.atan2(-y, -x)  # Negative because we want to face towards center
 
- 
+
     attenuation_factor = abs((angle_to_center % (math.pi / 4.0)) - (math.pi / 4.0)) / (math.pi / 4.0)
     attenuation_factor = min(1.0, attenuation_factor) # Clamp to [0, 1]
 
@@ -73,7 +78,7 @@ def _calculate_center_facing_rotation(x: float, y: float) -> float:
         new_angle_to_center = angle_to_center  - (angle_to_center * attenuation_factor / 5)
     else:
         new_angle_to_center = angle_to_center
-    
+
     original_target_rotation = DEFAULT_Z_ROTATION + angle_to_center
 
     # Adjust the offset based on the attenuation factor
@@ -81,13 +86,13 @@ def _calculate_center_facing_rotation(x: float, y: float) -> float:
     print(" \n \n --------------------------------")
     print("angle to center: ", math.degrees(angle_to_center), "attenuation factor: ", attenuation_factor, "original target rotation: ", math.degrees(original_target_rotation), "attenuated rotation: ", math.degrees(attenuated_rotation))
     print("-------------------------------- \n \n   ")
-    
+
     return attenuated_rotation
 
 def build_player_hand_from_config(
     card_loader: PokerCardLoader,
-    hand_config: Union[Dict[str, Any], PlayerHandModel]
-) -> Tuple[List[bpy.types.Object], Optional[Vector]]:
+    hand_config: dict[str, Any] | PlayerHandModel
+) -> tuple[list[bpy.types.Object], Vector | None]:
     """
     Builds a player's hand of cards, centered around a location, with horizontal and vertical spread.
     Note: X is vertical (up/down), Y is horizontal (left/right) in the user's perspective.
@@ -130,7 +135,7 @@ def build_player_hand_from_config(
                 face_down_indices = set(random.sample(all_indices, model.n_verso))
 
         print(f"\nBuilding player hand near {model.location}: {model.n_cards} cards, {model.n_verso} verso ('{model.verso_loc}')")
-        
+
         # --- Determine Orientation (Parallel to Y-axis or not) ---
         loc_x, loc_y = model.location[0], model.location[1]
 
@@ -143,20 +148,20 @@ def build_player_hand_from_config(
         is_y_parallel = abs(angle_to_y_axis) < (math.pi / 4.0)
         print(f"  Hand Location Angle (vs +Y): {math.degrees(angle_to_y_axis):.2f} deg -> is_y_parallel: {is_y_parallel}")
 
-        # --- Determine target scale --- 
+        # --- Determine target scale ---
         target_scale: float
-        if isinstance(model.scale, (int, float)):
+        if isinstance(model.scale, int | float):
             target_scale = float(model.scale)
         elif isinstance(model.scale, tuple) and len(model.scale) == 3:
             target_scale = float(model.scale[0])  # Use X component
         else:
             print(f"Warning: Invalid scale format in hand config ({model.scale}). Using default scale 1.0")
             target_scale = 1.0
-        
+
         print(f"  Using Target Scale: {target_scale:.4f}")
         print(f"  Spread Factors - Horizontal: {model.spread_factor_h:.2f}, Vertical: {model.spread_factor_v:.2f}")
 
-        # --- Calculate Gaps (considering scale) --- 
+        # --- Calculate Gaps (considering scale) ---
         # Note: Y is horizontal spread, X is vertical spread in user's perspective
         gap_y = _calculate_gap(
             model.spread_factor_h,  # Horizontal spread affects Y axis
@@ -166,7 +171,7 @@ def build_player_hand_from_config(
             MAX_CENTER_GAP_FACTOR_X,
             randomize=model.randomize_gap_h
         )
-        
+
         gap_x = _calculate_gap(
             model.spread_factor_v,  # Vertical spread affects X axis
             DEFAULT_CARD_HEIGHT,
@@ -184,13 +189,13 @@ def build_player_hand_from_config(
             print(f"  Y-Parallel Orientation: Swapping gaps. Effective Gap X (Vertical): {gap_x:.4f}, Effective Gap Y (Horizontal): {gap_y:.4f}")
         else:
             print(f"  Standard Orientation: Gap X (Vertical): {gap_x:.4f}, Gap Y (Horizontal): {gap_y:.4f}")
-            
-        # --- Centered Layout Calculation --- 
+
+        # --- Centered Layout Calculation ---
         total_width = (model.n_cards - 1) * gap_y  # Total horizontal width (Y axis)
         start_y_offset = -total_width / 2.0  # Center horizontally
         print(f"  Start Y Offset: {start_y_offset:.4f}")
 
-        # --- Card Placement Loop --- 
+        # --- Card Placement Loop ---
         cumulative_offset_x = 0
         cumulative_offset_y = 0
         for i in range(model.n_cards):
@@ -211,19 +216,19 @@ def build_player_hand_from_config(
                 current_x_offset = i * gap_x  # Vertical spread
 
             # Apply offsets to base location
-            
+
             x_pos = model.location[0] + current_x_offset  # Vertical position
             y_pos = model.location[1] + current_y_offset  # Horizontal position
-            
+
             location = (x_pos, y_pos, z_pos)
             print(f"  Card {i}: Offsets=(vertical={current_x_offset:.4f}, horizontal={current_y_offset:.4f}), "
                   f"Final location=({location[0]:.4f}, {location[1]:.4f}, {location[2]:.4f})")
 
-            # --- Calculate Center-Facing Rotation --- 
+            # --- Calculate Center-Facing Rotation ---
             # Pass the angle relative to the nearest Y-axis (mapped to [0, pi/2])
             # to attenuate the rotation.
             base_rotation = _calculate_center_facing_rotation(x_pos, y_pos)
-            
+
             # Apply random rotation variation if specified
             if model.rotation_std_dev > 0:
                 rotation_variation = random.gauss(0, model.rotation_std_dev)
@@ -237,13 +242,13 @@ def build_player_hand_from_config(
             else:
                 final_rotation = (math.pi, 0, final_z_rotation)
 
-            # --- Create and Load Card --- 
+            # --- Create and Load Card ---
             card_model_config = CardModel(
                 card_name=card_name,
                 location=location,
                 scale=model.scale,
                 face_up=is_face_up,
-                rotation_euler=final_rotation 
+                rotation_euler=final_rotation
             )
 
             print(f"  Loading card {i}: '{card_name}' face_up={is_face_up}, "
@@ -271,8 +276,8 @@ def build_player_hand_from_config(
 
 # --- Test Section ---
 if __name__ == "__main__":
-    import sys
     import os
+    import sys
 
     # Ensure the workspace root is in the Python path
     workspace_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
@@ -281,8 +286,9 @@ if __name__ == "__main__":
 
     try:
         import bpy
+
+        from poker.load_card import PokerCardLoader
         from scene_setup.general_setup import build_setup_from_config
-        from poker.load_card import PokerCardLoader 
     except ImportError as e:
         print(f"Error importing necessary modules: {e}")
         print("Please ensure the script is run from the workspace root or PYTHONPATH is set correctly.")
@@ -345,7 +351,7 @@ if __name__ == "__main__":
         'rotation_std_dev': 0.0,  # No rotation randomization
         'random_seed': 666
     }
-    
+
     player3_hand_config = {
         'card_names': ['QC', 'JC', '10C'],
         'n_cards': 3,
@@ -365,7 +371,7 @@ if __name__ == "__main__":
 
     print("\nBuilding Player 2 hand...")
     loaded_hand2_cards, hand_center2 = build_player_hand_from_config(card_loader, player2_hand_config)
-    
+
     print("\nBuilding Player 3 hand...")
     loaded_hand3_cards, hand_center3 = build_player_hand_from_config(card_loader, player3_hand_config)
 

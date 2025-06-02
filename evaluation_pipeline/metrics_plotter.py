@@ -1,12 +1,13 @@
-import pandas as pd
-import numpy as np
-import matplotlib.pyplot as plt
-import seaborn as sns
-from typing import Optional, Tuple, List, Dict, Any, Union
-import os # Added for directory creation
-from sklearn.metrics import confusion_matrix # Added for confusion matrix
+import os  # Added for directory creation
+from typing import Any
 
-from .metrics_calculator import MetricsCalculator 
+import matplotlib.pyplot as plt
+import numpy as np
+import pandas as pd
+import seaborn as sns
+
+from .metrics_calculator import MetricsCalculator
+
 # Removed compute_regression_stats as it's used internally by MetricsCalculator's methods primarily
 
 class MetricsPlotter:
@@ -18,7 +19,7 @@ class MetricsPlotter:
     of the plots.
     """
 
-    def __init__(self, df: pd.DataFrame, variable_col: str, output_dir: Optional[str] = "plots"):
+    def __init__(self, df: pd.DataFrame, variable_col: str, output_dir: str | None = "plots"):
         """
         Initializes the MetricsPlotter.
 
@@ -43,7 +44,7 @@ class MetricsPlotter:
         self.df_original = df.copy() # Store the original DataFrame to be used by suite methods
         self._initialize_for_variable(variable_col, output_dir)
 
-    def _initialize_for_variable(self, variable_col: str, output_dir: Optional[str]):
+    def _initialize_for_variable(self, variable_col: str, output_dir: str | None):
         """
         Internal helper to set up the plotter for a specific variable_col and output_dir.
         This allows re-initialization or fresh setup for different variables from the same original df.
@@ -90,16 +91,16 @@ class MetricsPlotter:
             # print(f"DEBUG: Initial all_unique_levels (sorted): {all_unique_levels}")
             try:
                 temp_series = pd.to_numeric(pd.Series(all_unique_levels), errors='coerce')
-                if not temp_series.isna().all(): 
+                if not temp_series.isna().all():
                     all_unique_levels = sorted(temp_series.dropna().unique())
                     # print(f"DEBUG: all_unique_levels after potential numeric conversion: {all_unique_levels}")
             except ValueError:
                 # print(f"Warning: Variable column '{self.variable_col}' levels used as is, as numeric conversion was not fully applicable.")
                 pass # Keep original sorting if not fully numeric
-        
+
         if not all_unique_levels:
             # print(f"Warning: No unique, non-NaN levels found for variable '{self.variable_col}'. Plots might be empty or incorrect.")
-            self.per_level_stats_df = pd.DataFrame(columns=[self.variable_col]) 
+            self.per_level_stats_df = pd.DataFrame(columns=[self.variable_col])
         else:
             calculator = MetricsCalculator(self.df.copy())
             self.per_level_stats_df = calculator.calculate_per_level_metrics(self.variable_col)
@@ -110,21 +111,21 @@ class MetricsPlotter:
                 self.per_level_stats_df = pd.DataFrame({self.variable_col: all_unique_levels})
                 # print(f"DEBUG: self.per_level_stats_df created as placeholder with all_unique_levels (empty from calculator):")
                 # print(self.per_level_stats_df.head())
-            
+
             if self.variable_col in self.per_level_stats_df.columns:
                 # print(f"DEBUG: '{self.variable_col}' found in self.per_level_stats_df. Attempting reindex.")
                 try:
-                    if pd.Series(all_unique_levels).dtype.kind in 'ifc': 
+                    if pd.Series(all_unique_levels).dtype.kind in 'ifc':
                         self.per_level_stats_df[self.variable_col] = pd.to_numeric(self.per_level_stats_df[self.variable_col], errors='coerce')
                         self.per_level_stats_df.dropna(subset=[self.variable_col], inplace=True)
-                except Exception as e:
+                except Exception:
                     # print(f"Warning: Type conversion for '{self.variable_col}' in per_level_stats_df failed before reindex: {e}")
                     pass
-                
+
                 self.per_level_stats_df = self.per_level_stats_df.set_index(self.variable_col)
                 self.per_level_stats_df = self.per_level_stats_df.reindex(all_unique_levels)
                 self.per_level_stats_df = self.per_level_stats_df.reset_index()
-                
+
                 if 'index' in self.per_level_stats_df.columns and self.variable_col not in self.per_level_stats_df.columns:
                     self.per_level_stats_df.rename(columns={'index': self.variable_col}, inplace=True)
                 elif 'level_0' in self.per_level_stats_df.columns and self.variable_col not in self.per_level_stats_df.columns:
@@ -135,12 +136,12 @@ class MetricsPlotter:
                         if pd.Series(all_unique_levels).dtype.kind in 'ifc':
                              self.per_level_stats_df[self.variable_col] = pd.to_numeric(self.per_level_stats_df[self.variable_col], errors='coerce')
                         self.per_level_stats_df = self.per_level_stats_df.sort_values(by=self.variable_col).reset_index(drop=True)
-                    except Exception as e:
+                    except Exception:
                         # print(f"Warning: Could not sort per_level_stats_df by '{self.variable_col}' after reindexing: {e}")
                         pass
                 # else:
-                #      print(f"Warning: '{self.variable_col}' column is missing after reindexing operations.")       
-            elif all_unique_levels: 
+                #      print(f"Warning: '{self.variable_col}' column is missing after reindexing operations.")
+            elif all_unique_levels:
                  self.per_level_stats_df = pd.DataFrame({self.variable_col: all_unique_levels})
                  if pd.Series(all_unique_levels).dtype.kind in 'ifc':
                       self.per_level_stats_df[self.variable_col] = pd.to_numeric(self.per_level_stats_df[self.variable_col], errors='coerce')
@@ -153,15 +154,15 @@ class MetricsPlotter:
                 for stat_col in ['mae', 'mae_std', 'mean_accuracy', 'std_accuracy', 'pred_mean', 'pred_std', 'target_mean', 'count']:
                     if stat_col not in self.per_level_stats_df.columns:
                         self.per_level_stats_df[stat_col] = np.nan
-            else: 
+            else:
                 self.per_level_stats_df = pd.DataFrame(columns=[self.variable_col, 'mae', 'mae_std', 'mean_accuracy', 'std_accuracy', 'pred_mean', 'pred_std', 'target_mean', 'count'])
-        
+
         # print(f"DEBUG: Final self.per_level_stats_df in _initialize_for_variable ({self.variable_col}):")
         # print(self.per_level_stats_df[[self.variable_col] + [col for col in ['mae', 'count'] if col in self.per_level_stats_df.columns]].to_string())
         # print(f"DEBUG: Data types of final self.per_level_stats_df in _initialize_for_variable:")
         # print(self.per_level_stats_df.dtypes)
 
-    def _prepare_ax(self, ax: Optional[plt.Axes] = None) -> plt.Axes:
+    def _prepare_ax(self, ax: plt.Axes | None = None) -> plt.Axes:
         """Prepares Axes object for plotting."""
         if ax is None:
             _, ax = plt.subplots()
@@ -174,14 +175,14 @@ class MetricsPlotter:
         else:
             # Set font size for existing title if any
             ax.set_title(ax.get_title(), fontsize=title_fontsize)
-            
+
         # Set font sizes for axis labels
         ax.set_xlabel(ax.get_xlabel(), fontsize=axis_fontsize)
         ax.set_ylabel(ax.get_ylabel(), fontsize=axis_fontsize)
-        
+
         # Set font sizes for tick labels
         ax.tick_params(axis='both', labelsize=tick_fontsize)
-        
+
         # Set font size for legend if it exists
         legend = ax.get_legend()
         if legend is not None:
@@ -192,12 +193,12 @@ class MetricsPlotter:
             else:  # Interior legend
                 for text in legend.get_texts():
                     text.set_fontsize(25)
-                    
+
         # Ensure all text elements in the plot have appropriate font sizes
         for text_obj in ax.texts:
             # Text within the plot area (like annotations) should use the axis_fontsize
             text_obj.set_fontsize(axis_fontsize)
-            
+
         # Update any additional text artists that might be in the axes
         for child in ax.get_children():
             if isinstance(child, plt.Text):
@@ -210,34 +211,34 @@ class MetricsPlotter:
 
     def _handle_x_ticks(self, ax):
         """Helper method to handle x-tick display for plots with many ticks.
-        
+
         If there are more than 10 x-ticks, only display text for every other x-tick
         starting from the 10th tick (i.e., show 10, 12, 14, etc. but hide 11, 13, 15, etc.)
         """
         # Get current x-tick positions and labels
         x_ticks = ax.get_xticks()
         x_tick_labels = [label.get_text() for label in ax.get_xticklabels()]
-        
+
         # If we have more than 10 ticks
         if len(x_ticks) > 10:
             # Create a mask where we keep all ticks below 10, and then every other tick for the rest
             mask = np.array([(i < 10 or (i >= 10 and (i % 2 == 0))) for i in range(len(x_ticks))])
-            
+
             # Apply the mask to the tick labels (replace non-masked labels with empty strings)
             new_labels = [label if mask[i] else '' for i, label in enumerate(x_tick_labels)]
-            
+
             # Apply the new labels
             ax.set_xticklabels(new_labels)
 
-    def plot_mae(self, 
-                 ax: Optional[plt.Axes] = None, 
-                 show_std_fill: bool = False, 
-                 show_abs_error_boxplot: bool = False, 
-                 abs_error_quantiles_fill: Optional[Tuple[float, float]] = None,
-                 plot_kwargs: Optional[Dict[str, Any]] = None,
-                 std_fill_kwargs: Optional[Dict[str, Any]] = None,
-                 boxplot_kwargs: Optional[Dict[str, Any]] = None,
-                 quantile_fill_kwargs: Optional[Dict[str, Any]] = None
+    def plot_mae(self,
+                 ax: plt.Axes | None = None,
+                 show_std_fill: bool = False,
+                 show_abs_error_boxplot: bool = False,
+                 abs_error_quantiles_fill: tuple[float, float] | None = None,
+                 plot_kwargs: dict[str, Any] | None = None,
+                 std_fill_kwargs: dict[str, Any] | None = None,
+                 boxplot_kwargs: dict[str, Any] | None = None,
+                 quantile_fill_kwargs: dict[str, Any] | None = None
                  ) -> plt.Axes:
         """
         Plots Mean Absolute Error (MAE) against the levels of 'variable_col'.
@@ -258,7 +259,7 @@ class MetricsPlotter:
 
         Returns:
             plt.Axes: The Axes object with the plot.
-        
+
         Raises:
             ValueError: If required columns for plotting are missing from per_level_stats_df
                         or if 'abs_error_quantiles_fill' provides invalid quantiles.
@@ -276,7 +277,7 @@ class MetricsPlotter:
         # x_values are the actual category labels (e.g., [1, 2, ..., 10])
         x_categories = self.per_level_stats_df[self.variable_col].tolist()
         y_mae = self.per_level_stats_df['mae'].tolist()
-        
+
         # positions are 0-indexed for plotting (e.g., [0, 1, ..., 9])
         x_positions = list(range(len(x_categories)))
 
@@ -292,20 +293,20 @@ class MetricsPlotter:
             mae_std_values = self.per_level_stats_df['mae_std'].tolist()
             _std_fill_kwargs = {'alpha': 0.2, 'label': 'MAE +/- Std(Abs Errors)'}
             if std_fill_kwargs: _std_fill_kwargs.update(std_fill_kwargs)
-            ax.fill_between(x_positions, 
-                            [m - s for m, s in zip(y_mae, mae_std_values)], 
-                            [m + s for m, s in zip(y_mae, mae_std_values)], 
+            ax.fill_between(x_positions,
+                            [m - s for m, s in zip(y_mae, mae_std_values, strict=False)],
+                            [m + s for m, s in zip(y_mae, mae_std_values, strict=False)],
                             **_std_fill_kwargs) # Use positions
 
         temp_df = self.df.copy()
         preds_numeric = pd.to_numeric(temp_df['preds'], errors='coerce')
         targets_numeric = pd.to_numeric(temp_df['targets'], errors='coerce')
-        
+
         valid_idx = preds_numeric.notna() & targets_numeric.notna()
-        temp_df['abs_error'] = np.nan 
+        temp_df['abs_error'] = np.nan
         if valid_idx.any():
             temp_df.loc[valid_idx, 'abs_error'] = (preds_numeric[valid_idx] - targets_numeric[valid_idx]).abs()
-        
+
         plot_df_abs_error = temp_df.dropna(subset=['abs_error', self.variable_col])
 
         if show_abs_error_boxplot:
@@ -327,7 +328,7 @@ class MetricsPlotter:
             if not (isinstance(abs_error_quantiles_fill, tuple) and len(abs_error_quantiles_fill) == 2 and
                     0 <= abs_error_quantiles_fill[0] < abs_error_quantiles_fill[1] <= 1):
                 raise ValueError("abs_error_quantiles_fill must be a tuple of two floats (q_low, q_high) between 0 and 1.")
-            
+
             if not plot_df_abs_error.empty:
                 q_low, q_high = abs_error_quantiles_fill
                 grouped_abs_errors = plot_df_abs_error.groupby(self.variable_col)['abs_error']
@@ -348,13 +349,13 @@ class MetricsPlotter:
 
                             _quantile_fill_kwargs = {'alpha': 0.3, 'label': f'Abs Error {q_low*100:.0f}-{q_high*100:.0f}th pct'}
                             if quantile_fill_kwargs: _quantile_fill_kwargs.update(quantile_fill_kwargs)
-                            
+
                             valid_quantile_idx = quantiles_df[q_low].notna() & quantiles_df[q_high].notna()
                             if valid_quantile_idx.any():
                                 # Use x_positions for the fill_between x-coordinates
-                                ax.fill_between([x_positions[i] for i, valid in enumerate(valid_quantile_idx) if valid], 
-                                                quantiles_df[q_low][valid_quantile_idx], 
-                                                quantiles_df[q_high][valid_quantile_idx], 
+                                ax.fill_between([x_positions[i] for i, valid in enumerate(valid_quantile_idx) if valid],
+                                                quantiles_df[q_low][valid_quantile_idx],
+                                                quantiles_df[q_high][valid_quantile_idx],
                                                 **_quantile_fill_kwargs)
                             else:
                                 print("No valid quantile data to plot after alignment/filtering.")
@@ -370,45 +371,45 @@ class MetricsPlotter:
         ax.set_xlabel(self.variable_col)
         ax.set_ylabel("MAE")
         ax.set_title(f"MAE vs {self.variable_col}")
-        
+
         # Set xticks and labels
         if x_positions:
             ax.set_xticks(x_positions)
             ax.set_xticklabels(x_categories)
             ax.set_xlim(x_positions[0] - 0.5, x_positions[-1] + 0.5)
-            
+
             # Handle x-tick display for plots with many ticks
             if len(x_positions) > 10:
                 # Get current tick labels
                 x_tick_labels = [label.get_text() for label in ax.get_xticklabels()]
-                
+
                 # Create a mask where we show all ticks below index 10, then only even-indexed ticks after that
                 mask = [(i < 10 or (i >= 10 and (i % 2 == 1))) for i in range(len(x_positions))]
-                
+
                 # Apply the mask to create new labels
                 new_labels = [label if mask[i] else '' for i, label in enumerate(x_tick_labels)]
-                
+
                 # Set the new labels
                 ax.set_xticklabels(new_labels)
 
         # After all plotting is done, add this line at the end before returning:
         self._set_plot_fonts(ax, title=f"MAE vs {self.variable_col}")
-        
+
         if _plot_kwargs.get('label') or (show_std_fill and _std_fill_kwargs.get('label')) or \
            (abs_error_quantiles_fill and not plot_df_abs_error.empty and _quantile_fill_kwargs.get('label')):
             ax.legend()
             self._set_plot_fonts(ax)
         return ax
 
-    def plot_nmae(self, 
-                 ax: Optional[plt.Axes] = None, 
-                 show_std_fill: bool = False, 
-                 show_abs_error_boxplot: bool = False, 
-                 abs_error_quantiles_fill: Optional[Tuple[float, float]] = None,
-                 plot_kwargs: Optional[Dict[str, Any]] = None,
-                 std_fill_kwargs: Optional[Dict[str, Any]] = None,
-                 boxplot_kwargs: Optional[Dict[str, Any]] = None,
-                 quantile_fill_kwargs: Optional[Dict[str, Any]] = None
+    def plot_nmae(self,
+                 ax: plt.Axes | None = None,
+                 show_std_fill: bool = False,
+                 show_abs_error_boxplot: bool = False,
+                 abs_error_quantiles_fill: tuple[float, float] | None = None,
+                 plot_kwargs: dict[str, Any] | None = None,
+                 std_fill_kwargs: dict[str, Any] | None = None,
+                 boxplot_kwargs: dict[str, Any] | None = None,
+                 quantile_fill_kwargs: dict[str, Any] | None = None
                  ) -> plt.Axes:
         """
         Plots Normalized Mean Absolute Error (NMAE) against the levels of 'variable_col'.
@@ -431,7 +432,7 @@ class MetricsPlotter:
 
         Returns:
             plt.Axes: The Axes object with the plot.
-        
+
         Raises:
             ValueError: If required columns for plotting are missing from per_level_stats_df
                         or if 'abs_error_quantiles_fill' provides invalid quantiles.
@@ -451,7 +452,7 @@ class MetricsPlotter:
         # x_values are the actual category labels (e.g., [1, 2, ..., 10])
         x_categories = self.per_level_stats_df[self.variable_col].tolist()
         y_nmae = self.per_level_stats_df['nmae'].tolist()
-        
+
         # positions are 0-indexed for plotting (e.g., [0, 1, ..., 9])
         x_positions = list(range(len(x_categories)))
 
@@ -464,7 +465,7 @@ class MetricsPlotter:
             if 'mae_std' not in self.per_level_stats_df.columns:
                 raise ValueError("Column 'mae_std' not found in per_level_stats_df. Cannot show std fill.")
             mae_std_values = self.per_level_stats_df['mae_std'].tolist()
-            
+
             # For NMAE, we need to normalize the std values too
             # We'll use the same normalization factor for each level
             normalized_std_values = []
@@ -479,46 +480,46 @@ class MetricsPlotter:
                         normalization_factor = abs(targets.mean())
                     else:
                         normalization_factor = 1.0  # Default if both range and mean are zero
-                    
+
                     normalized_std_values.append(mae_std_values[i] / normalization_factor)
                 else:
                     normalized_std_values.append(np.nan)
-            
+
             _std_fill_kwargs = {'alpha': 0.2, 'label': 'NMAE +/- Std(Norm Abs Errors)'}
             if std_fill_kwargs: _std_fill_kwargs.update(std_fill_kwargs)
-            ax.fill_between(x_positions, 
-                            [m - s for m, s in zip(y_nmae, normalized_std_values)], 
-                            [m + s for m, s in zip(y_nmae, normalized_std_values)], 
+            ax.fill_between(x_positions,
+                            [m - s for m, s in zip(y_nmae, normalized_std_values, strict=False)],
+                            [m + s for m, s in zip(y_nmae, normalized_std_values, strict=False)],
                             **_std_fill_kwargs) # Use positions
 
         temp_df = self.df.copy()
         preds_numeric = pd.to_numeric(temp_df['preds'], errors='coerce')
         targets_numeric = pd.to_numeric(temp_df['targets'], errors='coerce')
-        
+
         valid_idx = preds_numeric.notna() & targets_numeric.notna()
-        temp_df['abs_error'] = np.nan 
+        temp_df['abs_error'] = np.nan
         if valid_idx.any():
             temp_df.loc[valid_idx, 'abs_error'] = (preds_numeric[valid_idx] - targets_numeric[valid_idx]).abs()
-            
+
             # Calculate normalized absolute error for each row
             temp_df['norm_abs_error'] = np.nan
-            
+
             # Group by variable_col to calculate normalization factors
             for level, group in temp_df[valid_idx].groupby(self.variable_col):
                 targets_group = pd.to_numeric(group['targets'], errors='coerce')
                 target_range = targets_group.max() - targets_group.min()
-                
+
                 if target_range > 0:
                     normalization_factor = target_range
                 elif targets_group.mean() != 0:
                     normalization_factor = abs(targets_group.mean())
                 else:
                     normalization_factor = 1.0  # Default if both range and mean are zero
-                
+
                 # Apply normalization
                 level_indices = group.index
                 temp_df.loc[level_indices, 'norm_abs_error'] = temp_df.loc[level_indices, 'abs_error'] / normalization_factor
-        
+
         plot_df_abs_error = temp_df.dropna(subset=['norm_abs_error', self.variable_col])
 
         if show_abs_error_boxplot:
@@ -541,7 +542,7 @@ class MetricsPlotter:
             if not (isinstance(abs_error_quantiles_fill, tuple) and len(abs_error_quantiles_fill) == 2 and
                     0 <= abs_error_quantiles_fill[0] < abs_error_quantiles_fill[1] <= 1):
                 raise ValueError("abs_error_quantiles_fill must be a tuple of two floats (q_low, q_high) between 0 and 1.")
-            
+
             if not plot_df_abs_error.empty:
                 q_low, q_high = abs_error_quantiles_fill
                 grouped_abs_errors = plot_df_abs_error.groupby(self.variable_col)['norm_abs_error']
@@ -563,13 +564,13 @@ class MetricsPlotter:
 
                             _quantile_fill_kwargs = {'alpha': 0.3, 'label': f'Norm Abs Error {q_low*100:.0f}-{q_high*100:.0f}th pct'}
                             if quantile_fill_kwargs: _quantile_fill_kwargs.update(quantile_fill_kwargs)
-                            
+
                             valid_quantile_idx = quantiles_df[q_low].notna() & quantiles_df[q_high].notna()
                             if valid_quantile_idx.any():
                                 # Use x_positions for the fill_between x-coordinates
-                                ax.fill_between([x_positions[i] for i, valid in enumerate(valid_quantile_idx) if valid], 
-                                                quantiles_df[q_low][valid_quantile_idx], 
-                                                quantiles_df[q_high][valid_quantile_idx], 
+                                ax.fill_between([x_positions[i] for i, valid in enumerate(valid_quantile_idx) if valid],
+                                                quantiles_df[q_low][valid_quantile_idx],
+                                                quantiles_df[q_high][valid_quantile_idx],
                                                 **_quantile_fill_kwargs)
                             else:
                                 print("No valid quantile data to plot after alignment/filtering.")
@@ -585,41 +586,41 @@ class MetricsPlotter:
         ax.set_xlabel(self.variable_col)
         ax.set_ylabel("NMAE")
         ax.set_title(f"NMAE vs {self.variable_col}")
-        
+
         # Set xticks and labels
         if x_positions:
             ax.set_xticks(x_positions)
             ax.set_xticklabels(x_categories)
             ax.set_xlim(x_positions[0] - 0.5, x_positions[-1] + 0.5)
-            
+
             # Handle x-tick display for plots with many ticks
             if len(x_positions) > 10:
                 # Get current tick labels
                 x_tick_labels = [label.get_text() for label in ax.get_xticklabels()]
-                
+
                 # Create a mask where we show all ticks below index 10, then only even-indexed ticks after that
                 mask = [(i < 10 or (i >= 10 and (i % 2 == 1))) for i in range(len(x_positions))]
-                
+
                 # Apply the mask to create new labels
                 new_labels = [label if mask[i] else '' for i, label in enumerate(x_tick_labels)]
-                
+
                 # Set the new labels
                 ax.set_xticklabels(new_labels)
 
         # After all plotting is done, add this line at the end before returning:
         self._set_plot_fonts(ax, title=f"NMAE vs {self.variable_col}")
-        
+
         if _plot_kwargs.get('label') or (show_std_fill and _std_fill_kwargs.get('label')) or \
            (abs_error_quantiles_fill and not plot_df_abs_error.empty and _quantile_fill_kwargs.get('label')):
             ax.legend()
             self._set_plot_fonts(ax)
         return ax
 
-    def plot_accuracy(self, 
-                      ax: Optional[plt.Axes] = None, 
+    def plot_accuracy(self,
+                      ax: plt.Axes | None = None,
                       show_std_fill: bool = False,
-                      plot_kwargs: Optional[Dict[str, Any]] = None,
-                      std_fill_kwargs: Optional[Dict[str, Any]] = None
+                      plot_kwargs: dict[str, Any] | None = None,
+                      std_fill_kwargs: dict[str, Any] | None = None
                       ) -> plt.Axes:
         """
         Plots mean accuracy against the levels of 'variable_col'.
@@ -633,7 +634,7 @@ class MetricsPlotter:
 
         Returns:
             plt.Axes: The Axes object with the plot.
-        
+
         Raises:
             ValueError: If required columns 'mean_accuracy' (or 'std_accuracy' if show_std_fill is True)
                         are missing from per_level_stats_df.
@@ -661,52 +662,52 @@ class MetricsPlotter:
             std_accuracy_values = self.per_level_stats_df['std_accuracy'].tolist()
             _std_fill_kwargs = {'alpha': 0.2, 'label': 'Mean Acc +/- Std(Acc)'}
             if std_fill_kwargs: _std_fill_kwargs.update(std_fill_kwargs)
-            ax.fill_between(x_positions, 
-                            [y - s for y, s in zip(y_accuracy, std_accuracy_values)], 
-                            [y + s for y, s in zip(y_accuracy, std_accuracy_values)], 
+            ax.fill_between(x_positions,
+                            [y - s for y, s in zip(y_accuracy, std_accuracy_values, strict=False)],
+                            [y + s for y, s in zip(y_accuracy, std_accuracy_values, strict=False)],
                             **_std_fill_kwargs) # Use positions
 
         ax.set_xlabel(self.variable_col)
         ax.set_ylabel("Accuracy")
         ax.set_title(f"Accuracy vs {self.variable_col}")
-        
+
         if x_positions:
             ax.set_xticks(x_positions)
             ax.set_xticklabels(x_categories)
             ax.set_xlim(x_positions[0] - 0.5, x_positions[-1] + 0.5)
-            
+
             # Handle x-tick display for plots with many ticks
             if len(x_positions) > 10:
                 # Get current tick labels
                 x_tick_labels = [label.get_text() for label in ax.get_xticklabels()]
-                
+
                 # Create a mask where we show all ticks below index 10, then only even-indexed ticks after that
                 mask = [(i < 10 or (i >= 10 and (i % 2 == 1))) for i in range(len(x_positions))]
-                
+
                 # Apply the mask to create new labels
                 new_labels = [label if mask[i] else '' for i, label in enumerate(x_tick_labels)]
-                
+
                 # Set the new labels
                 ax.set_xticklabels(new_labels)
-            
+
         # After all plotting is done, add this line at the end before returning:
         self._set_plot_fonts(ax, title=f"Accuracy vs {self.variable_col}")
-        
+
         if _plot_kwargs.get('label') or (show_std_fill and _std_fill_kwargs.get('label')):
             ax.legend()
             self._set_plot_fonts(ax)
         return ax
 
-    def plot_mean_pred_vs_target(self, 
-                                 ax: Optional[plt.Axes] = None, 
-                                 show_pred_std_fill: bool = False, 
-                                 show_pred_boxplot: bool = False, 
-                                 pred_quantiles_fill: Optional[Tuple[float, float]] = None,
-                                 pred_plot_kwargs: Optional[Dict[str, Any]] = None,
-                                 target_plot_kwargs: Optional[Dict[str, Any]] = None,
-                                 pred_std_fill_kwargs: Optional[Dict[str, Any]] = None,
-                                 pred_boxplot_kwargs: Optional[Dict[str, Any]] = None,
-                                 pred_quantile_fill_kwargs: Optional[Dict[str, Any]] = None
+    def plot_mean_pred_vs_target(self,
+                                 ax: plt.Axes | None = None,
+                                 show_pred_std_fill: bool = False,
+                                 show_pred_boxplot: bool = False,
+                                 pred_quantiles_fill: tuple[float, float] | None = None,
+                                 pred_plot_kwargs: dict[str, Any] | None = None,
+                                 target_plot_kwargs: dict[str, Any] | None = None,
+                                 pred_std_fill_kwargs: dict[str, Any] | None = None,
+                                 pred_boxplot_kwargs: dict[str, Any] | None = None,
+                                 pred_quantile_fill_kwargs: dict[str, Any] | None = None
                                  ) -> plt.Axes:
         """
         Plots mean predictions and mean targets against the levels of 'variable_col'.
@@ -748,7 +749,7 @@ class MetricsPlotter:
         x_categories = self.per_level_stats_df[self.variable_col].tolist()
         y_pred_mean = self.per_level_stats_df['pred_mean'].tolist()
         y_target_mean = self.per_level_stats_df['target_mean'].tolist()
-        
+
         x_positions = list(range(len(x_categories)))
 
         _pred_plot_kwargs = {'label': 'Mean Prediction', 'marker': 'o'}
@@ -765,9 +766,9 @@ class MetricsPlotter:
             pred_std_values = self.per_level_stats_df['pred_std'].tolist()
             _pred_std_fill_kwargs = {'alpha': 0.2, 'label': 'Mean Pred +/- Std(Preds)'}
             if pred_std_fill_kwargs: _pred_std_fill_kwargs.update(pred_std_fill_kwargs)
-            ax.fill_between(x_positions, 
-                            [m - s for m, s in zip(y_pred_mean, pred_std_values)], 
-                            [m + s for m, s in zip(y_pred_mean, pred_std_values)], 
+            ax.fill_between(x_positions,
+                            [m - s for m, s in zip(y_pred_mean, pred_std_values, strict=False)],
+                            [m + s for m, s in zip(y_pred_mean, pred_std_values, strict=False)],
                             **_pred_std_fill_kwargs) # Use positions
 
         temp_df_preds = self.df.copy()
@@ -782,7 +783,7 @@ class MetricsPlotter:
                 }
                 if pred_boxplot_kwargs: _pred_boxplot_kwargs.update(pred_boxplot_kwargs)
                 try:
-                    
+
                     sns.boxplot(x=self.variable_col, y='preds', data=plot_df_preds, ax=ax, order=x_categories, **_pred_boxplot_kwargs)
                 except Exception as e:
                     print(f"Could not generate prediction boxplot: {e}")
@@ -793,7 +794,7 @@ class MetricsPlotter:
             if not (isinstance(pred_quantiles_fill, tuple) and len(pred_quantiles_fill) == 2 and
                     0 <= pred_quantiles_fill[0] < pred_quantiles_fill[1] <= 1):
                 raise ValueError("pred_quantiles_fill must be a tuple (q_low, q_high) between 0 and 1.")
-            
+
             if not plot_df_preds.empty:
                 q_low, q_high = pred_quantiles_fill
                 grouped_preds = plot_df_preds.groupby(self.variable_col)['preds']
@@ -809,18 +810,18 @@ class MetricsPlotter:
                                 quantiles_df.index = quantiles_df.index.astype(idx_type)
                             except Exception as e_conv:
                                 print(f"Warning: could not convert prediction quantiles_df.index to type {idx_type}: {e_conv}")
-                            
+
                             quantiles_df = quantiles_df.reindex(x_categories)
 
 
                             _pred_quantile_fill_kwargs = {'alpha': 0.3, 'label': f'Preds {q_low*100:.0f}-{q_high*100:.0f}th pct'}
                             if pred_quantile_fill_kwargs: _pred_quantile_fill_kwargs.update(pred_quantile_fill_kwargs)
-                            
+
                             valid_quantile_idx = quantiles_df[q_low].notna() & quantiles_df[q_high].notna()
                             if valid_quantile_idx.any():
                                 ax.fill_between([x_positions[i] for i, valid in enumerate(valid_quantile_idx) if valid],
-                                                quantiles_df[q_low][valid_quantile_idx], 
-                                                quantiles_df[q_high][valid_quantile_idx], 
+                                                quantiles_df[q_low][valid_quantile_idx],
+                                                quantiles_df[q_high][valid_quantile_idx],
                                                 **_pred_quantile_fill_kwargs)
                             else:
                                 print("No valid prediction quantile data to plot after alignment/filtering.")
@@ -841,39 +842,39 @@ class MetricsPlotter:
             ax.set_xticks(x_positions)
             ax.set_xticklabels(x_categories)
             ax.set_xlim(x_positions[0] - 0.5, x_positions[-1] + 0.5)
-            
+
             # Handle x-tick display for plots with many ticks
             if len(x_positions) > 10:
                 # Get current tick labels
                 x_tick_labels = [label.get_text() for label in ax.get_xticklabels()]
-                
+
                 # Create a mask where we show all ticks below index 10, then only even-indexed ticks after that
                 mask = [(i < 10 or (i >= 10 and (i % 2 == 1))) for i in range(len(x_positions))]
-                
+
                 # Apply the mask to create new labels
                 new_labels = [label if mask[i] else '' for i, label in enumerate(x_tick_labels)]
-                
+
                 # Set the new labels
                 ax.set_xticklabels(new_labels)
-        
+
         # After all plotting is done, add this line at the end before returning:
         self._set_plot_fonts(ax, title=f"Mean Prediction vs Target vs {self.variable_col}")
-        
+
         handles, labels = ax.get_legend_handles_labels()
         # Remove duplicate labels if any, preserving order
-        by_label = dict(zip(labels, handles))
+        by_label = dict(zip(labels, handles, strict=False))
         if by_label: # Only create legend if there are items
             ax.legend(by_label.values(), by_label.keys())
             self._set_plot_fonts(ax)
-            
+
         return ax
 
     def plot_prediction_error_distribution(self,
-                                           ax: Optional[plt.Axes] = None,
+                                           ax: plt.Axes | None = None,
                                            plot_type: str = 'hist',
                                            drop_na_errors: bool = True,
-                                           hist_kwargs: Optional[Dict[str, Any]] = None,
-                                           kde_kwargs: Optional[Dict[str, Any]] = None
+                                           hist_kwargs: dict[str, Any] | None = None,
+                                           kde_kwargs: dict[str, Any] | None = None
                                            ) -> plt.Axes:
         """
         Plots the distribution of prediction errors (preds - targets).
@@ -889,7 +890,7 @@ class MetricsPlotter:
 
         Returns:
             plt.Axes: The Axes object with the plot.
-            
+
         Raises:
             ValueError: If plot_type is not 'hist' or 'kde', or if 'preds' or 'targets' columns are missing.
         """
@@ -901,9 +902,9 @@ class MetricsPlotter:
         # Ensure preds and targets are numeric for error calculation
         preds_numeric = pd.to_numeric(self.df['preds'], errors='coerce')
         targets_numeric = pd.to_numeric(self.df['targets'], errors='coerce')
-        
+
         errors = preds_numeric - targets_numeric
-        
+
         if drop_na_errors:
             errors = errors.dropna()
 
@@ -927,42 +928,42 @@ class MetricsPlotter:
 
         ax.set_xlabel("Prediction Error (preds - targets)")
         ax.set_title("Distribution of Prediction Errors")
-        
+
         # After all plotting is done, add this line at the end before returning:
         self._set_plot_fonts(ax, title="Distribution of Prediction Errors")
         return ax
 
-    def plot_confusion_matrix(self, 
-                                ax: Optional[plt.Axes] = None, 
-                                labels: Optional[List[Any]] = None,
-                                normalize: Optional[str] = None,
+    def plot_confusion_matrix(self,
+                                ax: plt.Axes | None = None,
+                                labels: list[Any] | None = None,
+                                normalize: str | None = None,
                                 cmap: str = "Blues",
                                 drop_na: bool = True,
-                                heatmap_kwargs: Optional[Dict[str, Any]] = None
+                                heatmap_kwargs: dict[str, Any] | None = None
                                 ) -> plt.Axes:
         """
         Plots a confusion matrix for 'targets' and 'preds'.
 
-        Note: This method is most suitable for classification tasks or when 'targets' 
-        and 'preds' represent discrete categories. If they are continuous, consider 
+        Note: This method is most suitable for classification tasks or when 'targets'
+        and 'preds' represent discrete categories. If they are continuous, consider
         binning them before using this method or interpreting the output carefully.
 
         Args:
             ax (Optional[plt.Axes]): Matplotlib Axes object to plot on. If None, creates a new one.
-            labels (Optional[List[Any]]): Ordered list of labels to index the matrix. 
-                                          If None, it's inferred from unique sorted values of 
+            labels (Optional[List[Any]]): Ordered list of labels to index the matrix.
+                                          If None, it's inferred from unique sorted values of
                                           targets and predictions present in the data.
-            normalize (Optional[str]): Normalizes confusion matrix over the true (rows), 
-                                     predicted (columns) conditions or all entries. 
+            normalize (Optional[str]): Normalizes confusion matrix over the true (rows),
+                                     predicted (columns) conditions or all entries.
                                      Accepts 'true', 'pred', 'all'. Defaults to None (no normalization).
             cmap (str): Colormap for the heatmap. Defaults to "Blues".
-            drop_na (bool): If True, rows with NaN in 'targets' or 'preds' are dropped before 
+            drop_na (bool): If True, rows with NaN in 'targets' or 'preds' are dropped before
                             computing the matrix. Defaults to True.
             heatmap_kwargs (Optional[Dict[str, Any]]): Keyword arguments for sns.heatmap.
 
         Returns:
             plt.Axes: The Axes object with the plot.
-            
+
         Raises:
             ValueError: If 'normalize' is not one of 'true', 'pred', 'all', or None, or if essential columns are missing.
         """
@@ -987,19 +988,19 @@ class MetricsPlotter:
         # Determine row and column labels separately
         if labels is None:
             # For target rows - use only unique target values
-            row_labels = sorted(list(set(y_true.unique())))
+            row_labels = sorted(set(y_true.unique()))
             # For prediction columns - use only unique prediction values
-            col_labels = sorted(list(set(y_pred.unique())))
+            col_labels = sorted(set(y_pred.unique()))
         else:
             # If labels are provided, use the provided labels
             # We use unique targets for rows and the provided labels for columns
-            row_labels = sorted(list(set(y_true.unique())))
+            row_labels = sorted(set(y_true.unique()))
             col_labels = labels
 
         # Generate confusion matrix with separate row and column labels
         # Create an empty matrix with dimensions (rows = target classes, cols = prediction classes)
         cm = np.zeros((len(row_labels), len(col_labels)), dtype=int)
-        
+
         # Fill the confusion matrix manually
         for i, true_label in enumerate(row_labels):
             for j, pred_label in enumerate(col_labels):
@@ -1010,7 +1011,7 @@ class MetricsPlotter:
                 # Avoid division by zero by adding a small constant
                 row_sums = cm.sum(axis=1)[:, np.newaxis]
                 cm = np.divide(cm.astype('float'), row_sums, out=np.zeros_like(cm, dtype=float), where=row_sums!=0)
-                fmt = '.2f' 
+                fmt = '.2f'
             elif normalize == 'pred':
                 col_sums = cm.sum(axis=0)[np.newaxis, :]
                 cm = np.divide(cm.astype('float'), col_sums, out=np.zeros_like(cm, dtype=float), where=col_sums!=0)
@@ -1026,50 +1027,50 @@ class MetricsPlotter:
 
         # Set default heatmap kwargs
         _heatmap_kwargs = {
-            'annot': True, 
-            'fmt': fmt, 
+            'annot': True,
+            'fmt': fmt,
             'cmap': cmap,
             # Force y-label rotation directly in the heatmap parameters
             'yticklabels': True  # Keep this True so seaborn uses our labels
         }
-        if heatmap_kwargs: 
+        if heatmap_kwargs:
             # If user provided annot_kws, update our default rather than overwrite
             if 'annot_kws' in heatmap_kwargs:
                 _heatmap_kwargs['annot_kws'].update(heatmap_kwargs.pop('annot_kws'))
             _heatmap_kwargs.update(heatmap_kwargs)
-        
+
         # Create the heatmap with our manually constructed matrix
         heatmap = sns.heatmap(cm, ax=ax, **_heatmap_kwargs)
-        
+
         ax.set_title(f"Confusion Matrix {' (Normalized: ' + normalize + ')' if normalize else ''}")
         ax.set_ylabel('True label')
         ax.set_xlabel('Predicted label')
-        
+
         # Set tick positions and labels
         ax.set_xticks(np.arange(len(col_labels)) + 0.5)  # Add 0.5 to center ticks in cells
         ax.set_yticks(np.arange(len(row_labels)) + 0.5)
-        
+
         # Create labels with every other value visible
         x_mask = np.arange(len(col_labels)) % 2 == 0  # True for every other position (0, 2, 4, etc.)
         y_mask = np.arange(len(row_labels)) % 2 == 0  # True for every other position (0, 2, 4, etc.)
-        
-        x_labels = [str(label) if m else '' for label, m in zip(col_labels, x_mask)]
-        y_labels = [str(label) if m else '' for label, m in zip(row_labels, y_mask)]
-        
+
+        x_labels = [str(label) if m else '' for label, m in zip(col_labels, x_mask, strict=False)]
+        y_labels = [str(label) if m else '' for label, m in zip(row_labels, y_mask, strict=False)]
+
         # Set the x-labels normally
         ax.set_xticklabels(x_labels)
-        
+
         # Make y-labels vertical by forcing rotation to 0 (vertical text reads top to bottom)
         ax.set_yticklabels(y_labels, rotation=0, va='center')
-        
+
         # Apply consistent font sizes to all elements
         self._set_plot_fonts(ax, title=f"Confusion Matrix{' (Normalized: ' + normalize + ')' if normalize else ''}")
-        
+
         # Ensure colorbar text has the same font size as tick labels
         cbar = ax.collections[0].colorbar
         if cbar:
             cbar.ax.tick_params(labelsize=17)  # Match the tick_fontsize from _set_plot_fonts
-        
+
         return ax
 
     def save_figure(self, fig: plt.Figure, filename_stem: str, file_format: str = "pdf") -> None:
@@ -1091,19 +1092,19 @@ class MetricsPlotter:
 
         if not isinstance(fig, plt.Figure):
             raise TypeError("Input 'fig' must be a matplotlib.figure.Figure instance.")
-        
+
         if not filename_stem:
             raise ValueError("filename_stem cannot be empty.")
 
         output_path = os.path.join(self.output_dir, f"{filename_stem}.{file_format}")
-        
+
         try:
             fig.savefig(output_path, format=file_format, bbox_inches='tight')
             print(f"Figure successfully saved to {output_path}")
         except Exception as e:
             print(f"Error saving figure to {output_path}: {e}")
 
-    def run_plotting_suite(self, variables_to_plot_individually: List[str], plot_choices: Dict[str, bool],  suite_output_dir: str, save_combined_pdf_per_variable: bool, save_individual_pngs_per_variable: bool, vars_to_combine: Optional[List[str]] = None, advanced_plot_options: Optional[Dict[str, Any]] = None) -> None:
+    def run_plotting_suite(self, variables_to_plot_individually: list[str], plot_choices: dict[str, bool],  suite_output_dir: str, save_combined_pdf_per_variable: bool, save_individual_pngs_per_variable: bool, vars_to_combine: list[str] | None = None, advanced_plot_options: dict[str, Any] | None = None) -> None:
         """
         Runs a suite of plots for multiple variables and saves the results.
 
@@ -1122,7 +1123,7 @@ class MetricsPlotter:
                                                    Currently not implemented.
             advanced_plot_options (Optional[Dict[str, Any]]): Dictionary with advanced plotting options.
                                                              Supports 'cross_variable_plots' and 'conditional_plots'.
-                                                             
+
                                                              Example structure:
                                                              {
                                                                  "cross_variable_plots": [
@@ -1200,7 +1201,7 @@ class MetricsPlotter:
                 except Exception as e:
                     print(f"Error generating key subplots for '{variable_name}': {e}")
 
-            # --- 1. Handle Combined PDF per Variable --- 
+            # --- 1. Handle Combined PDF per Variable ---
             if save_combined_pdf_per_variable:
                 active_plot_functions = []
                 if plot_choices.get('mae', False): active_plot_functions.append((self.plot_mae, default_mae_opts, f"MAE vs {variable_name}"))
@@ -1210,7 +1211,7 @@ class MetricsPlotter:
                 if plot_choices.get('error_distribution', False): active_plot_functions.append((self.plot_prediction_error_distribution, default_error_dist_opts, "Prediction Error Distribution"))
                 if plot_choices.get('confusion_matrix', False):
                     # Prepare labels for CM
-                    unique_labels_cm = sorted(list(set(self.df['targets'].dropna().unique()).union(set(self.df['preds'].dropna().unique()))) )
+                    unique_labels_cm = sorted(set(self.df['targets'].dropna().unique()).union(set(self.df['preds'].dropna().unique())) )
                     unique_labels_cm = [int(l) if isinstance(l, float) and l.is_integer() else l for l in unique_labels_cm]
                     cm_opts_with_labels = {**default_cm_opts, 'labels': unique_labels_cm}
                     active_plot_functions.append((self.plot_confusion_matrix, cm_opts_with_labels, f"Confusion Matrix (Normalized: {default_cm_opts.get('normalize')})"))
@@ -1227,14 +1228,14 @@ class MetricsPlotter:
                         except Exception as e_plot:
                             print(f"Error generating subplot for '{title}' (variable: {variable_name}): {e_plot}")
                             axs_combined_flat[i].text(0.5, 0.5, f"Error: {e_plot}", ha='center', va='center', color='red')
-                    
+
                     fig_combined.tight_layout(pad=3.0, h_pad=1.0)
                     combined_pdf_filename_stem = f"combined_plots_{variable_name.replace(' ', '_').replace('/', '_')}"
                     self.save_figure(fig_combined, combined_pdf_filename_stem, file_format="pdf")
                     plt.close(fig_combined)
                     print(f"Saved combined PDF for '{variable_name}'.")
 
-            # --- 2. Handle Individual PDFs per Variable --- 
+            # --- 2. Handle Individual PDFs per Variable ---
             if save_individual_pngs_per_variable:
                 plot_configs = {
                     'mae': (self.plot_mae, default_mae_opts, "individual_mae"),
@@ -1251,13 +1252,13 @@ class MetricsPlotter:
                         try:
                             current_opts = opts.copy()
                             if plot_key == 'confusion_matrix': # Special handling for CM labels
-                                unique_labels_cm_ind = sorted(list(set(self.df['targets'].dropna().unique()).union(set(self.df['preds'].dropna().unique()))) )
+                                unique_labels_cm_ind = sorted(set(self.df['targets'].dropna().unique()).union(set(self.df['preds'].dropna().unique())) )
                                 unique_labels_cm_ind = [int(l) if isinstance(l, float) and l.is_integer() else l for l in unique_labels_cm_ind]
                                 current_opts['labels'] = unique_labels_cm_ind
-                            
+
                             plot_func(ax=ax_ind, **current_opts)
                             # Title is usually set by the plot method itself, which is fine for individual plots
-                            
+
                             filename_stem_complete = f"{filename_stem_base}_{variable_name.replace(' ', '_').replace('/', '_')}"
                             self.save_figure(fig_ind, filename_stem_complete, file_format="pdf")
                             print(f"Saved individual PDF for '{plot_key}' (variable: {variable_name})")
@@ -1277,30 +1278,30 @@ class MetricsPlotter:
                     variable2 = cross_config.get('variable2')
                     metrics = cross_config.get('metrics', ['mae', 'mean_accuracy', 'count'])
                     output_dir = cross_config.get('output_dir')
-                    
+
                     # If no specific output_dir is provided, create one under the suite directory
                     if not output_dir:
                         output_dir = os.path.join(suite_output_dir, f"cross_variable_{variable1}_vs_{variable2}")
-                    
+
                     # Default to True for save_individual_pngs if not specified
                     save_individual_pngs = cross_config.get('save_individual_pngs', True)
                     # Default to False for save_combined_pdf if not specified
                     save_combined_pdf = cross_config.get('save_combined_pdf', False)
-                    # Optional heatmap_kwargs 
+                    # Optional heatmap_kwargs
                     heatmap_kwargs = cross_config.get('heatmap_kwargs')
-                    
+
                     if not variable1 or not variable2:
                         print(f"Error in cross-variable config #{config_idx+1}: Missing variable1 or variable2.")
                         continue
-                        
+
                     if variable1 not in self.df_original.columns:
                         print(f"Error in cross-variable config #{config_idx+1}: Variable '{variable1}' not found in DataFrame.")
                         continue
-                        
+
                     if variable2 not in self.df_original.columns:
                         print(f"Error in cross-variable config #{config_idx+1}: Variable '{variable2}' not found in DataFrame.")
                         continue
-                    
+
                     try:
                         print(f"Generating cross-variable plots for '{variable1}' vs '{variable2}'...")
                         self.plot_cross_variable_performance(
@@ -1324,26 +1325,26 @@ class MetricsPlotter:
                     conditional_var = cond_config.get('conditional_variable')
                     metrics = cond_config.get('metrics', ['mae', 'accuracy'])
                     output_dir = cond_config.get('output_dir')
-                    
+
                     # If no specific output_dir is provided, create one under the suite directory
                     if not output_dir:
                         output_dir = os.path.join(suite_output_dir, f"conditional_{primary_var}_by_{conditional_var}")
-                    
+
                     # Default to True for save_individual_pngs if not specified
                     save_individual_pngs = cond_config.get('save_individual_pngs', True)
-                    
+
                     if not primary_var or not conditional_var:
                         print(f"Error in conditional config #{config_idx+1}: Missing primary_variable or conditional_variable.")
                         continue
-                        
+
                     if primary_var not in self.df_original.columns:
                         print(f"Error in conditional config #{config_idx+1}: Primary variable '{primary_var}' not found in DataFrame.")
                         continue
-                        
+
                     if conditional_var not in self.df_original.columns:
                         print(f"Error in conditional config #{config_idx+1}: Conditional variable '{conditional_var}' not found in DataFrame.")
                         continue
-                    
+
                     try:
                         print(f"Generating conditional plots for '{primary_var}' conditioned on '{conditional_var}'...")
                         self.plot_conditional_single_variable_performance(
@@ -1361,9 +1362,9 @@ class MetricsPlotter:
     def plot_cross_variable_performance(self,
                                         variable1_name: str,
                                         variable2_name: str,
-                                        metrics_to_plot: List[str],
-                                        cross_plot_output_dir: Optional[str] = None,
-                                        heatmap_kwargs: Optional[Dict[str, Any]] = None,
+                                        metrics_to_plot: list[str],
+                                        cross_plot_output_dir: str | None = None,
+                                        heatmap_kwargs: dict[str, Any] | None = None,
                                         save_individual_pngs: bool = True,
                                         save_combined_pdf: bool = False) -> None:
         """
@@ -1373,7 +1374,7 @@ class MetricsPlotter:
             variable1_name (str): Name of the first variable (column in self.df_original).
             variable2_name (str): Name of the second variable (column in self.df_original).
             metrics_to_plot (List[str]): List of metric names (e.g., 'mae', 'mean_error', 'count')
-                                         to generate heatmaps for. These should be columns in the 
+                                         to generate heatmaps for. These should be columns in the
                                          output of MetricsCalculator.calculate_cross_variable_stats.
             cross_plot_output_dir (Optional[str]): Specific directory to save these cross-variable plots.
                                                    If None, uses self.output_dir.
@@ -1389,7 +1390,7 @@ class MetricsPlotter:
         if not output_dir:
             print("Warning: Output directory for cross-variable plots is not set. Plots will not be saved.")
             # Optionally, could decide to just display if in an interactive environment, but for now, focus on saving.
-            # return 
+            # return
         else:
             try:
                 os.makedirs(output_dir, exist_ok=True)
@@ -1412,13 +1413,13 @@ class MetricsPlotter:
             return
 
         # Store figures if a combined PDF is needed
-        figures_for_pdf: List[Tuple[plt.Figure, str]] = []
+        figures_for_pdf: list[tuple[plt.Figure, str]] = []
 
         for metric_name in metrics_to_plot:
             if metric_name not in cross_stats_df.columns:
                 print(f"Warning: Metric '{metric_name}' not found in cross_stats_df. Skipping this heatmap.")
                 continue
-            
+
             try:
                 pivot_df = cross_stats_df.pivot_table(index=variable1_name, columns=variable2_name, values=metric_name)
             except Exception as e_pivot:
@@ -1430,9 +1431,9 @@ class MetricsPlotter:
                 continue
 
             fig, ax = plt.subplots(figsize=(max(8, len(pivot_df.columns) * 0.8), max(6, len(pivot_df.index) * 0.6))) # Adjust size
-            
+
             # Default heatmap kwargs. User can override including vmin, vmax, cmap.
-            _h_kwargs = {'annot': True, 'fmt': ".2f", 'cmap': "YlGnBu"} 
+            _h_kwargs = {'annot': True, 'fmt': ".2f", 'cmap': "YlGnBu"}
             if metric_name == 'count': # Counts are usually integers
                 _h_kwargs['fmt'] = "d"
             if metric_name == 'mean_accuracy':
@@ -1454,7 +1455,7 @@ class MetricsPlotter:
                 continue
 
             filename_stem = f"crossplot_{variable1_name}_vs_{variable2_name}_{metric_name}"
-            
+
             if save_individual_pngs and output_dir:
                 # For saving individual plots, we need to use the MetricsPlotter's save_figure method which expects output_dir to be self.output_dir
                 # So, we temporarily set self.output_dir if a specific cross_plot_output_dir was given
@@ -1464,7 +1465,7 @@ class MetricsPlotter:
                     self.save_figure(fig, filename_stem, file_format="pdf")
                 finally:
                     self.output_dir = original_plotter_output_dir # Restore it
-            
+
             if save_combined_pdf:
                 figures_for_pdf.append((fig, filename_stem)) # Store fig for PDF, close later
             else:
@@ -1495,7 +1496,7 @@ class MetricsPlotter:
         primary_variable: str,
         conditional_variable: str,
         conditional_plot_output_dir: str,
-        metrics_to_plot: Optional[List[str]] = None,
+        metrics_to_plot: list[str] | None = None,
         save_individual_pngs: bool = True
     ) -> None:
         """
@@ -1522,7 +1523,7 @@ class MetricsPlotter:
         if primary_variable not in self.df_original.columns or conditional_variable not in self.df_original.columns:
             print(f"Error: Primary ('{primary_variable}') or conditional ('{conditional_variable}') variable not in DataFrame. Cannot proceed.")
             return
-        
+
         if primary_variable == conditional_variable:
             print(f"Error: Primary and conditional variables must be different. Both are '{primary_variable}'.")
             return
@@ -1534,40 +1535,36 @@ class MetricsPlotter:
             # return # Decide if this is a hard stop
 
         unique_conditional_levels = sorted(self.df_original[conditional_variable].dropna().unique())
-        
+
         fixed_levels_to_use = []
         if not unique_conditional_levels:
             print(f"No unique, non-NaN levels found for conditional variable '{conditional_variable}'. Cannot generate conditional plots.")
             return
-        
+
         num_unique = len(unique_conditional_levels)
-        if num_unique == 1:
-            fixed_levels_to_use = unique_conditional_levels
-        elif num_unique == 2:
-            fixed_levels_to_use = unique_conditional_levels
-        elif num_unique == 3:
+        if num_unique == 1 or num_unique == 2 or num_unique == 3:
             fixed_levels_to_use = unique_conditional_levels
         else: # > 3 unique levels
             if pd.api.types.is_numeric_dtype(self.df_original[conditional_variable].dropna()):
                 # Min, Median, Max of the unique levels themselves
                 fixed_levels_to_use = [
-                    unique_conditional_levels[0], 
+                    unique_conditional_levels[0],
                     unique_conditional_levels[num_unique // 2], # Median element of sorted unique levels
                     unique_conditional_levels[-1]
                 ]
             else: # Categorical
                 fixed_levels_to_use = [
-                    unique_conditional_levels[0], 
+                    unique_conditional_levels[0],
                     unique_conditional_levels[num_unique // 2],
                     unique_conditional_levels[-1]
                 ]
-        fixed_levels_to_use = sorted(list(set(fixed_levels_to_use))) # Ensure uniqueness if min/median/max coincide
+        fixed_levels_to_use = sorted(set(fixed_levels_to_use)) # Ensure uniqueness if min/median/max coincide
 
         print(f"Conditional plots for '{primary_variable}' fixing '{conditional_variable}' at levels: {fixed_levels_to_use}")
 
         for fixed_level in fixed_levels_to_use:
             filtered_df = self.df_original[self.df_original[conditional_variable] == fixed_level].copy()
-            
+
             if filtered_df.empty:
                 print(f"No data found for '{primary_variable}' when '{conditional_variable}' is {fixed_level}. Skipping.")
                 continue
@@ -1585,7 +1582,7 @@ class MetricsPlotter:
             except ValueError as ve:
                 print(f"Error initializing temp_plotter for {primary_variable} (conditional {conditional_variable}={fixed_level}): {ve}. Skipping this level.")
                 continue
-            
+
             print(f"  Generating plots for '{primary_variable}' with '{conditional_variable}' = {fixed_level} (Output: {level_output_dir})")
 
             if 'mae' in metrics_to_plot:
@@ -1599,7 +1596,7 @@ class MetricsPlotter:
                 except Exception as e_m:
                     print(f"    Error plotting MAE for {primary_variable} ({conditional_variable}={fixed_level}): {e_m}")
                     if plt.fignum_exists(fig_mae.number): plt.close(fig_mae)
-            
+
             if 'accuracy' in metrics_to_plot:
                 try:
                     fig_acc, ax_acc = plt.subplots(figsize=(10,6))
@@ -1616,9 +1613,9 @@ class MetricsPlotter:
 
     def plot_summary_grid(
         self,
-        save_path: Optional[str] = None,
+        save_path: str | None = None,
         file_format: str = "pdf",
-        plot_kwargs: Optional[Dict[str, Any]] = None
+        plot_kwargs: dict[str, Any] | None = None
     ) -> plt.Figure:
         """
         Creates a 2x3 grid of subplots summarizing key metrics:
@@ -1675,19 +1672,19 @@ class MetricsPlotter:
         # (1,1): Confusion Matrix
         try:
             # Infer labels for confusion matrix from the data
-            unique_labels = sorted(list(set(self.df['targets'].dropna().unique()).union(set(self.df['preds'].dropna().unique()))))
+            unique_labels = sorted(set(self.df['targets'].dropna().unique()).union(set(self.df['preds'].dropna().unique())))
             unique_labels = [int(l) if isinstance(l, float) and l.is_integer() else l for l in unique_labels]
-            
+
             # Plot the confusion matrix with default parameters
             self.plot_confusion_matrix(ax=axs[1, 1], labels=unique_labels, normalize=None)
             axs[1, 1].set_title("Confusion Matrix", fontsize=30)
-            
+
             # Manually adjust font sizes after the plot is created
             # This approach avoids the annot_kws parameter issue
             for text in axs[1, 1].texts:
                 if text.get_text().strip():  # Only adjust non-empty text
                     text.set_fontsize(15)  # Increased from 8 to 13
-                
+
         except Exception as e:
             axs[1, 1].text(0.5, 0.5, f"Error plotting Confusion Matrix: {e}", ha='center', va='center', color='red', fontsize=20)
             axs[1, 1].set_title("Confusion Matrix (Error)", fontsize=30)
@@ -1715,9 +1712,9 @@ class MetricsPlotter:
 
     def plot_key_subplots(
         self,
-        save_path: Optional[str] = None,
+        save_path: str | None = None,
         file_format: str = "pdf",
-        plot_kwargs: Optional[Dict[str, Any]] = None
+        plot_kwargs: dict[str, Any] | None = None
     ) -> plt.Figure:
         """
         Creates a 2x2 grid of subplots with key metrics:
@@ -1777,7 +1774,7 @@ class MetricsPlotter:
 
         # (1,0): Confusion Matrix
         try:
-            unique_labels = sorted(list(set(self.df['targets'].dropna().unique()).union(set(self.df['preds'].dropna().unique()))) )
+            unique_labels = sorted(set(self.df['targets'].dropna().unique()).union(set(self.df['preds'].dropna().unique())) )
             unique_labels = [int(l) if isinstance(l, float) and l.is_integer() else l for l in unique_labels]
             self.plot_confusion_matrix(ax=axs[1, 0], labels=unique_labels, normalize=None)
             axs[1, 0].set_title("Confusion Matrix", fontsize=axis_fontsize)
@@ -1826,7 +1823,7 @@ class MetricsPlotter:
 if __name__ == '__main__':
     # Define the desired output directory name for plots generated by this script run
     script_output_directory = "chess_gpt-4.1_declarative_debiased_count"
-    
+
 
     # Load the diagnostic results CSV
     try:
@@ -1843,12 +1840,12 @@ if __name__ == '__main__':
     print(f"Loaded diagnostic data with {len(df_diagnostic)} rows.")
     print(f"DEBUG (__main__): Initial unique values of 'target': {df_diagnostic['target'].unique()}")
     print(f"DEBUG (__main__): Initial unique values of 'pred': {df_diagnostic['pred'].unique()}")
-    
+
     # The 'target' and 'pred' columns from the CSV will be used.
     # 'number' will be the variable_col.
     # MetricsPlotter's __init__ handles renaming 'pred' to 'preds' and 'target' to 'targets',
     # and converts them to numeric.
-    
+
     variable_to_plot = 'number' # This is the column we'll use for the x-axis
 
     if variable_to_plot not in df_diagnostic.columns:
@@ -1864,8 +1861,8 @@ if __name__ == '__main__':
 
     try:
         # Pass the output directory to the MetricsPlotter instance
-        plotter_diagnostic = MetricsPlotter(df_diagnostic, 
-                                          variable_col=variable_to_plot, 
+        plotter_diagnostic = MetricsPlotter(df_diagnostic,
+                                          variable_col=variable_to_plot,
                                           output_dir=script_output_directory)
     except Exception as e:
         print(f"Error initializing MetricsPlotter: {e}")
@@ -1873,7 +1870,7 @@ if __name__ == '__main__':
 
     print(f"DEBUG (__main__): plotter_diagnostic.per_level_stats_df[{variable_to_plot}] before plotting:")
     print(plotter_diagnostic.per_level_stats_df[variable_to_plot])
-    print(f"DEBUG (__main__): plotter_diagnostic.per_level_stats_df full before plotting:")
+    print("DEBUG (__main__): plotter_diagnostic.per_level_stats_df full before plotting:")
     print(plotter_diagnostic.per_level_stats_df.to_string())
 
     # Create a figure with 5 subplots for the original 3 + 2 new ones
@@ -1883,9 +1880,9 @@ if __name__ == '__main__':
     # Plot MAE
     try:
         plotter_diagnostic.plot_mae(
-            ax=axs[0], 
-            show_std_fill=True, 
-            show_abs_error_boxplot=True, 
+            ax=axs[0],
+            show_std_fill=True,
+            show_abs_error_boxplot=True,
             abs_error_quantiles_fill=(0.25, 0.75),
             boxplot_kwargs={'showfliers': False}
         )
@@ -1906,7 +1903,7 @@ if __name__ == '__main__':
     # Plot Accuracy
     try:
         plotter_diagnostic.plot_accuracy(
-            ax=axs[1], 
+            ax=axs[1],
             show_std_fill=True
         )
         axs[1].set_title(f"Accuracy vs {variable_to_plot} (Gemma Diagnostic Data)")
@@ -1921,12 +1918,12 @@ if __name__ == '__main__':
         axs[1].text(0.5, 0.5, f"Error plotting Accuracy: {e}", ha='center', va='center', color='red')
         axs[1].set_title(f"Accuracy vs {variable_to_plot} (Plotting Error)")
         print(f"Error during Accuracy plot: {e}")
-        
+
     # Plot Mean Prediction vs Target
     try:
         plotter_diagnostic.plot_mean_pred_vs_target(
-            ax=axs[2], 
-            show_pred_std_fill=True, 
+            ax=axs[2],
+            show_pred_std_fill=True,
             show_pred_boxplot=True, # Enable boxplot for predictions
             pred_quantiles_fill=(0.25, 0.75),
             pred_boxplot_kwargs={'showfliers': False}
@@ -1938,7 +1935,7 @@ if __name__ == '__main__':
         #     if unique_x_values:
         #         axs[2].set_xticks(unique_x_values)
         #         axs[2].set_xlim(min(unique_x_values) - 0.5, max(unique_x_values) + 0.5)
-            
+
     except Exception as e:
         axs[2].text(0.5, 0.5, f"Error plotting Pred/Target: {e}", ha='center', va='center', color='red')
         axs[2].set_title(f"Mean Pred/Target vs {variable_to_plot} (Plotting Error)")
@@ -1951,20 +1948,20 @@ if __name__ == '__main__':
             plot_type='hist',
             hist_kwargs={'bins': 20, 'kde': True} # Example: 20 bins and overlay KDE
         )
-        axs[3].set_title(f"Prediction Error Distribution (Gemma Diagnostic Data)")
+        axs[3].set_title("Prediction Error Distribution (Gemma Diagnostic Data)")
     except Exception as e:
         axs[3].text(0.5, 0.5, f"Error plotting Error Distribution: {e}", ha='center', va='center', color='red')
-        axs[3].set_title(f"Prediction Error Distribution (Plotting Error)")
+        axs[3].set_title("Prediction Error Distribution (Plotting Error)")
         print(f"Error during Prediction Error Distribution plot: {e}")
 
     # Plot Confusion Matrix
     try:
         # Infer labels for confusion matrix from the data, as an example
         # This assumes 'target' and 'pred' can be treated as class labels
-        unique_labels = sorted(list(set(df_diagnostic['target'].dropna().unique()).union(set(df_diagnostic['pred'].dropna().unique()))))
+        unique_labels = sorted(set(df_diagnostic['target'].dropna().unique()).union(set(df_diagnostic['pred'].dropna().unique())))
         # Convert to int if they are like 1.0, 2.0 etc.
         unique_labels = [int(l) if isinstance(l, float) and l.is_integer() else l for l in unique_labels]
-        
+
         plotter_diagnostic.plot_confusion_matrix(
             ax=axs[4],
             labels=unique_labels, # Pass inferred labels
@@ -1972,25 +1969,25 @@ if __name__ == '__main__':
             heatmap_kwargs={'annot_kws':{"size": 8}} # Smaller annotations if many cells
         )
         # Title is set within the method, but we can adjust if needed
-        # axs[4].set_title(f"Confusion Matrix (Gemma Diagnostic Data)") 
+        # axs[4].set_title(f"Confusion Matrix (Gemma Diagnostic Data)")
     except Exception as e:
         axs[4].text(0.5, 0.5, f"Error plotting Confusion Matrix: {e}", ha='center', va='center', color='red')
-        axs[4].set_title(f"Confusion Matrix (Plotting Error)")
+        axs[4].set_title("Confusion Matrix (Plotting Error)")
         print(f"Error during Confusion Matrix plot: {e}")
 
     # Use the new save_figure method from the plotter instance
     plotter_diagnostic.save_figure(fig, "diagnostic_plots_gemma_combined_extended", file_format="pdf")
-    
-    # --- Save Individual Plots as PDF --- 
+
+    # --- Save Individual Plots as PDF ---
     print("\n--- Saving Individual Plots as PDF ---")
 
     # Individual MAE Plot
     try:
         fig_mae, ax_mae = plt.subplots(figsize=(10, 6))
         plotter_diagnostic.plot_mae(
-            ax=ax_mae, 
-            show_std_fill=True, 
-            show_abs_error_boxplot=True, 
+            ax=ax_mae,
+            show_std_fill=True,
+            show_abs_error_boxplot=True,
             abs_error_quantiles_fill=(0.25, 0.75),
             boxplot_kwargs={'showfliers': False}
         )
@@ -2004,7 +2001,7 @@ if __name__ == '__main__':
     try:
         fig_acc, ax_acc = plt.subplots(figsize=(10, 6))
         plotter_diagnostic.plot_accuracy(
-            ax=ax_acc, 
+            ax=ax_acc,
             show_std_fill=True
         )
         ax_acc.set_title(f"Accuracy vs {variable_to_plot} (Gemma Diagnostic Data - Individual)")
@@ -2017,9 +2014,9 @@ if __name__ == '__main__':
     try:
         fig_pred_target, ax_pred_target = plt.subplots(figsize=(10, 6))
         plotter_diagnostic.plot_mean_pred_vs_target(
-            ax=ax_pred_target, 
-            show_pred_std_fill=True, 
-            show_pred_boxplot=True, 
+            ax=ax_pred_target,
+            show_pred_std_fill=True,
+            show_pred_boxplot=True,
             pred_quantiles_fill=(0.25, 0.75),
             pred_boxplot_kwargs={'showfliers': False}
         )
@@ -2037,7 +2034,7 @@ if __name__ == '__main__':
             plot_type='hist',
             hist_kwargs={'bins': 30, 'edgecolor': 'black', 'kde': True}
         )
-        ax_err_dist.set_title(f"Prediction Error Distribution (Gemma Diagnostic Data - Individual)")
+        ax_err_dist.set_title("Prediction Error Distribution (Gemma Diagnostic Data - Individual)")
         plotter_diagnostic.save_figure(fig_err_dist, "diagnostic_error_distribution_plot", file_format="pdf")
         plt.close(fig_err_dist)
     except Exception as e:
@@ -2046,7 +2043,7 @@ if __name__ == '__main__':
     # Individual Confusion Matrix Plot
     try:
         fig_cm, ax_cm = plt.subplots(figsize=(10, 8)) # Adjusted size for CM
-        unique_labels_cm_indiv = sorted(list(set(df_diagnostic['target'].dropna().unique()).union(set(df_diagnostic['pred'].dropna().unique()))) )
+        unique_labels_cm_indiv = sorted(set(df_diagnostic['target'].dropna().unique()).union(set(df_diagnostic['pred'].dropna().unique())) )
         unique_labels_cm_indiv = [int(l) if isinstance(l, float) and l.is_integer() else l for l in unique_labels_cm_indiv]
 
         plotter_diagnostic.plot_confusion_matrix(
@@ -2061,7 +2058,7 @@ if __name__ == '__main__':
         print(f"Error saving individual Confusion Matrix plot: {e}")
 
     plt.close(fig) # Close the main combined figure
-    print("\nDiagnostic plotting script finished.") 
+    print("\nDiagnostic plotting script finished.")
 
 
     # --- Example usage of the new run_plotting_suite method ---
@@ -2075,12 +2072,12 @@ if __name__ == '__main__':
         if initial_var_col_for_suite_runner not in df_diagnostic.columns:
             print(f"Error: Column '{initial_var_col_for_suite_runner}' needed for initial plotter setup not found. Cannot run suite.")
         else:
-            suite_plotter = MetricsPlotter(df_diagnostic, 
-                                         variable_col=initial_var_col_for_suite_runner, 
+            suite_plotter = MetricsPlotter(df_diagnostic,
+                                         variable_col=initial_var_col_for_suite_runner,
                                          output_dir="suite_general_output_temp") # Temporary output dir
 
             variables_to_analyze = ['number'] # Could be ['number', 'another_categorical_column'] if available
-            
+
             # Example: Add another dummy variable column to df_diagnostic for testing the suite with multiple variables
             if 'number' in df_diagnostic.columns:
                 if len(df_diagnostic['number'].unique()) > 1:
@@ -2134,4 +2131,4 @@ if __name__ == '__main__':
                 }
             )
     else:
-        print("Skipping plotting suite example as df_diagnostic is empty.") 
+        print("Skipping plotting suite example as df_diagnostic is empty.")

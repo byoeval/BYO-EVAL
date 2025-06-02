@@ -1,17 +1,19 @@
-import bpy
-from typing import Dict, Any
+from typing import Any
 
-from .base import ChessPiece
+import bpy
+
 from ..config.models import PieceModel
+from .base import ChessPiece
+
 
 class Pawn(ChessPiece):
     """Chess pawn piece implementation."""
-    
+
     def create_geometry(self) -> None:
         """Create the pawn geometry."""
         location = self.config.location
         scale = self.config.geometry.scale
-        
+
         # Base of the pawn
         bpy.ops.mesh.primitive_cylinder_add(
             vertices=32,
@@ -22,7 +24,7 @@ class Pawn(ChessPiece):
         base = bpy.context.active_object
         base.name = f"{self.get_color_name()}Pawn_Base"
         self.parts.append(base)
-        
+
         # Body of the pawn
         bpy.ops.mesh.primitive_cylinder_add(
             vertices=32,
@@ -33,7 +35,7 @@ class Pawn(ChessPiece):
         body = bpy.context.active_object
         body.name = f"{self.get_color_name()}Pawn_Body"
         self.parts.append(body)
-        
+
         # Neck of the pawn
         bpy.ops.mesh.primitive_cylinder_add(
             vertices=32,
@@ -44,7 +46,7 @@ class Pawn(ChessPiece):
         neck = bpy.context.active_object
         neck.name = f"{self.get_color_name()}Pawn_Neck"
         self.parts.append(neck)
-        
+
         # Head of the pawn (sphere)
         bpy.ops.mesh.primitive_uv_sphere_add(
             segments=32,
@@ -57,16 +59,16 @@ class Pawn(ChessPiece):
         self.parts.append(head)
 
 
-def create_pawn(config: Dict[str, Any]) -> bpy.types.Object:
+def create_pawn(config: dict[str, Any]) -> bpy.types.Object:
     """
     Create a chess pawn piece from a configuration dictionary.
-    
+
     Args:
         config: Dictionary containing piece configuration
-        
+
     Returns:
         The created pawn object
     """
     piece_config = PieceModel.from_dict(config)
     pawn = Pawn(piece_config)
-    return pawn.create() 
+    return pawn.create()

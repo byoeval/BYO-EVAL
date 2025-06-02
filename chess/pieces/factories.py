@@ -1,10 +1,12 @@
 import abc
-import bpy
 import logging
-from typing import Dict, Any, Optional, Callable
-from pathlib import Path
 import math
 import random
+from collections.abc import Callable
+from pathlib import Path
+from typing import Any
+
+import bpy
 
 from utils.blender_utils import extract_object_from_blend
 
@@ -14,27 +16,26 @@ class PieceFactory(abc.ABC):
     """Abstract base class for creating chess pieces."""
 
     @abc.abstractmethod
-    def create_piece(self, piece_type: str, config: Dict[str, Any]) -> Optional[bpy.types.Object]:
+    def create_piece(self, piece_type: str, config: dict[str, Any]) -> bpy.types.Object | None:
         """
         Creates a chess piece object based on its type and configuration.
 
         Args:
             piece_type: The type of the piece (e.g., 'pawn', 'king'). Lowercase.
-            config: A dictionary containing configuration parameters for the piece 
-                    (e.g., world location, scale, material properties). 
+            config: A dictionary containing configuration parameters for the piece
+                    (e.g., world location, scale, material properties).
                     The 'location' key is expected to be the final world coordinates.
 
         Returns:
             A Blender object representing the created piece, or None if creation fails.
         """
-        pass
 
-    def _get_creator_func(self, piece_type: str) -> Optional[Callable]:
+    def _get_creator_func(self, piece_type: str) -> Callable | None:
         """Helper method to dynamically get the creation function based on type. Should be overridden by subclasses."""
         logger.warning(f"_get_creator_func not implemented for {self.__class__.__name__}")
         return None
 
-    def _call_creator_func(self, creator_func: Callable, config: Dict[str, Any]) -> Optional[bpy.types.Object]:
+    def _call_creator_func(self, creator_func: Callable, config: dict[str, Any]) -> bpy.types.Object | None:
         """Helper to call the creator function with error handling."""
         try:
             piece = creator_func(config)
@@ -51,8 +52,8 @@ class PieceFactory(abc.ABC):
 
 class DefaultPieceFactory(PieceFactory):
     """Creates pieces using the standard homemade generation logic from chess.pieces.*."""
-    
-    def _get_creator_func(self, piece_type: str) -> Optional[Callable]:
+
+    def _get_creator_func(self, piece_type: str) -> Callable | None:
         try:
             if piece_type == "pawn":
                 from chess.pieces.pawn import create_pawn as func
@@ -74,7 +75,7 @@ class DefaultPieceFactory(PieceFactory):
             logger.error(f"DefaultPieceFactory: Failed to import creation function for '{piece_type}': {e}")
             return None
 
-    def create_piece(self, piece_type: str, config: Dict[str, Any]) -> Optional[bpy.types.Object]:
+    def create_piece(self, piece_type: str, config: dict[str, Any]) -> bpy.types.Object | None:
         creator_func = self._get_creator_func(piece_type.lower())
         if creator_func:
             return self._call_creator_func(creator_func, config)
@@ -86,14 +87,14 @@ class OldSchoolPieceFactory(PieceFactory):
     Creates pieces using logic from chess.pieces_from_blend.old_school.pieces,
     with geometry caching for performance.
     """
-    
+
     # Cache for extracted mesh data (piece_type -> mesh)
-    _geometry_cache: Dict[str, bpy.types.Mesh] = {}
+    _geometry_cache: dict[str, bpy.types.Mesh] = {}
     # Cache for extracted template objects (to avoid re-extraction within _get_or_extract_mesh)
-    _extracted_template_objects: Dict[str, bpy.types.Object] = {}
-    
+    _extracted_template_objects: dict[str, bpy.types.Object] = {}
+
     # Mapping from piece type to object name in the blend file
-    _piece_type_to_blend_object_map: Dict[str, str] = {
+    _piece_type_to_blend_object_map: dict[str, str] = {
         "pawn": "Pawn.016",
         "rook": "Elephant.001", # Using elephant as rook
         "knight": "Plane.002",   # Using plane as knight
@@ -101,9 +102,9 @@ class OldSchoolPieceFactory(PieceFactory):
         "queen": "Queen.001",
         "king": "King.001",
     }
-    
+
     # Specific scaling factors for each piece type
-    _piece_type_to_scale_map: Dict[str, float] = {
+    _piece_type_to_scale_map: dict[str, float] = {
         "pawn": 1.7,
         "rook": 1.2,
         "knight": 1.2,
@@ -120,14 +121,14 @@ class OldSchoolPieceFactory(PieceFactory):
         OldSchoolPieceFactory._geometry_cache.clear()
         OldSchoolPieceFactory._extracted_template_objects.clear()
         logger.debug("OldSchoolPieceFactory initialized, geometry cache cleared.")
-        
+
         # Get the project root directory using pathlib for more reliable path handling
         current_file = Path(__file__)
         project_root = current_file.parent.parent.parent.absolute()
         self.blend_path = str(project_root / "blend_files" / "chess" / "chess_oldschool.blend")
 
 
-    def _get_or_extract_mesh(self, piece_type: str) -> Optional[bpy.types.Mesh]:
+    def _get_or_extract_mesh(self, piece_type: str) -> bpy.types.Mesh | None:
         """
         Retrieves mesh data from cache or extracts it from the blend file.
 
@@ -168,13 +169,13 @@ class OldSchoolPieceFactory(PieceFactory):
             except Exception as e:
                 logger.error(f"Error extracting '{object_name}' from {self.blend_path}: {e}", exc_info=True)
                 return None
-        
+
         if template_object and template_object.data:
             # Important: Cache a COPY of the mesh data
             mesh_copy = template_object.data.copy()
             OldSchoolPieceFactory._geometry_cache[piece_type] = mesh_copy
             logger.info(f"Cached mesh data for: {piece_type}")
-            
+
             # Clean up the extracted template object from the scene after caching its data
             # Ensure it's actually in the scene's objects before trying to remove
             if template_object.name in bpy.data.objects:
@@ -182,7 +183,7 @@ class OldSchoolPieceFactory(PieceFactory):
                  logger.debug(f"Removed temporary template object '{object_name}' after caching mesh.")
             # Also remove from our temporary dict
             del OldSchoolPieceFactory._extracted_template_objects[object_name]
-            
+
             return mesh_copy
         else:
             logger.warning(f"Extracted template object '{object_name}' has no mesh data.")
@@ -193,7 +194,7 @@ class OldSchoolPieceFactory(PieceFactory):
                  del OldSchoolPieceFactory._extracted_template_objects[object_name]
             return None
 
-    def _create_material(self, base_name: str, config: Dict[str, Any]) -> bpy.types.Material:
+    def _create_material(self, base_name: str, config: dict[str, Any]) -> bpy.types.Material:
         """Creates a new material based on the piece config."""
         mat_name = f"{base_name}_{config.get('color', 'default')}_{random.random():.4f}" # Add random suffix for uniqueness
         mat = bpy.data.materials.new(name=mat_name)
@@ -217,22 +218,22 @@ class OldSchoolPieceFactory(PieceFactory):
             elif color_value == 'black':
                 rgba = (0.2, 0.2, 0.2, 1.0)
             else: # Default fallback
-                rgba = (0.8, 0.8, 0.8, 1.0) 
-        elif isinstance(color_value, (list, tuple)) and len(color_value) == 4:
+                rgba = (0.8, 0.8, 0.8, 1.0)
+        elif isinstance(color_value, list | tuple) and len(color_value) == 4:
             rgba = tuple(color_value)
         else: # Default fallback
             rgba = (0.8, 0.8, 0.8, 1.0)
             logger.warning(f"Invalid color format '{color_value}', using default gray.")
-            
+
         principled.inputs['Base Color'].default_value = rgba
-        
+
         # Other properties
         principled.inputs['Metallic'].default_value = config.get('metallic', 0.0)
         principled.inputs['Roughness'].default_value = config.get('roughness', 0.3)
-        
+
         return mat
 
-    def create_piece(self, piece_type: str, config: Dict[str, Any]) -> Optional[bpy.types.Object]:
+    def create_piece(self, piece_type: str, config: dict[str, Any]) -> bpy.types.Object | None:
         """Creates a piece instance using cached geometry and applies config."""
 
         print("--------------------------------")
@@ -249,7 +250,7 @@ class OldSchoolPieceFactory(PieceFactory):
         # Create new object linked to the cached mesh
         instance_name = f"{piece_type_lower}_instance_{random.random():.4f}"
         new_object = bpy.data.objects.new(name=instance_name, object_data=cached_mesh)
-        
+
         # Link to scene
         bpy.context.collection.objects.link(new_object)
 
@@ -271,7 +272,7 @@ class OldSchoolPieceFactory(PieceFactory):
         # --- Adjust Z-location based on object origin vs. base ---
         # Ensure dependency graph is updated to get correct dimensions after scaling
         bpy.context.view_layer.update()
-        
+
 
         # ---------------------------------------------------------
 
@@ -285,7 +286,7 @@ class OldSchoolPieceFactory(PieceFactory):
             # Apply default rotation based on piece type if random_rotation is False
             if piece_type_lower == "knight":
                 # Default rotation for knight (90 degrees around Z)
-                new_object.rotation_euler = (0, 0, math.pi / 2) 
+                new_object.rotation_euler = (0, 0, math.pi / 2)
             else:
                 # Default for other pieces
                 new_object.rotation_euler = (0, 0, 0.1) # Explicitly set to (near) zero
@@ -303,7 +304,7 @@ class OldSchoolPieceFactory(PieceFactory):
         print("FINAL WITHIN FUNCTION FACTORY LOCATION", new_object.location)
         print("--------------------------------")
         return new_object
-    
+
     # _get_creator_func is no longer needed for this factory
     # _call_creator_func is no longer needed for this factory
 
@@ -312,22 +313,34 @@ class StonesColorPieceFactory(PieceFactory):
     """Creates pieces using logic from chess.pieces_from_blend.pieces_stones_color.pieces."""
     # TODO: Implement caching similar to OldSchoolPieceFactory if this factory is used and needs optimization.
     # For now, it keeps the old import-based logic.
-    
-    def _get_creator_func(self, piece_type: str) -> Optional[Callable]:
+
+    def _get_creator_func(self, piece_type: str) -> Callable | None:
         try:
              # Assuming the function names match the piece types in pieces_stones_color/pieces.py
             if piece_type == "pawn":
-                from chess.pieces_from_blend.pieces_stones_color.pieces import create_pawn as func
+                from chess.pieces_from_blend.pieces_stones_color.pieces import (
+                    create_pawn as func,
+                )
             elif piece_type == "rook":
-                from chess.pieces_from_blend.pieces_stones_color.pieces import create_rook as func
+                from chess.pieces_from_blend.pieces_stones_color.pieces import (
+                    create_rook as func,
+                )
             elif piece_type == "knight":
-                 from chess.pieces_from_blend.pieces_stones_color.pieces import create_knight as func
+                 from chess.pieces_from_blend.pieces_stones_color.pieces import (
+                     create_knight as func,
+                 )
             elif piece_type == "bishop":
-                 from chess.pieces_from_blend.pieces_stones_color.pieces import create_bishop as func
+                 from chess.pieces_from_blend.pieces_stones_color.pieces import (
+                     create_bishop as func,
+                 )
             elif piece_type == "queen":
-                 from chess.pieces_from_blend.pieces_stones_color.pieces import create_queen as func
+                 from chess.pieces_from_blend.pieces_stones_color.pieces import (
+                     create_queen as func,
+                 )
             elif piece_type == "king":
-                 from chess.pieces_from_blend.pieces_stones_color.pieces import create_king as func
+                 from chess.pieces_from_blend.pieces_stones_color.pieces import (
+                     create_king as func,
+                 )
             else:
                 logger.warning(f"StonesColorPieceFactory: Unknown piece type '{piece_type}'")
                 return None
@@ -339,9 +352,9 @@ class StonesColorPieceFactory(PieceFactory):
              logger.error(f"StonesColorPieceFactory: Creation function not found for '{piece_type}' in pieces_stones_color.pieces: {e}")
              return None
 
-    def create_piece(self, piece_type: str, config: Dict[str, Any]) -> Optional[bpy.types.Object]:
+    def create_piece(self, piece_type: str, config: dict[str, Any]) -> bpy.types.Object | None:
         creator_func = self._get_creator_func(piece_type.lower())
         if creator_func:
              # Potentially adapt config if needed for stones_color functions
             return self._call_creator_func(creator_func, config)
-        return None 
+        return None

@@ -1,13 +1,13 @@
 """Difficulty presets for chess scene generation."""
 
-from typing import Dict, Any
+from typing import Any
 
 from .models import (
-    DifficultyPreset,
     BoardRandomizationModel,
-    PieceRandomizationModel,
+    DifficultyPreset,
     PieceCountRange,
-    RandomizationRange
+    PieceRandomizationModel,
+    RandomizationRange,
 )
 
 # Default presets dictionary
@@ -86,45 +86,45 @@ DEFAULT_PRESETS = {
 def get_difficulty_preset(difficulty: str = "medium") -> DifficultyPreset:
     """
     Get a predefined difficulty preset
-    
+
     Args:
         difficulty: Difficulty level ('easy', 'medium', 'hard')
-        
+
     Returns:
         DifficultyPreset configuration for the specified difficulty
     """
     return DEFAULT_PRESETS.get(difficulty.lower(), DEFAULT_PRESETS["medium"])
 
-def get_preset_as_dict(difficulty: str = "medium") -> Dict[str, Any]:
+def get_preset_as_dict(difficulty: str = "medium") -> dict[str, Any]:
     """
     Get a predefined difficulty preset as a dictionary
-    
+
     Args:
         difficulty: Difficulty level ('easy', 'medium', 'hard')
-        
+
     Returns:
         Dictionary representation of the difficulty preset
     """
     preset = get_difficulty_preset(difficulty)
     return preset.to_dict()
 
-def create_preset_from_dict(config: Dict[str, Any]) -> DifficultyPreset:
+def create_preset_from_dict(config: dict[str, Any]) -> DifficultyPreset:
     """
     Create a difficulty preset from a dictionary configuration
-    
+
     Args:
         config: Dictionary containing the preset configuration
-        
+
     Returns:
         DifficultyPreset created from the dictionary
     """
     return DifficultyPreset.from_dict(config)
 
-def export_all_presets() -> Dict[str, Dict[str, Any]]:
+def export_all_presets() -> dict[str, dict[str, Any]]:
     """
     Export all default presets as dictionaries
-    
+
     Returns:
         Dictionary containing all presets in dictionary format
     """
-    return {name: preset.to_dict() for name, preset in DEFAULT_PRESETS.items()} 
+    return {name: preset.to_dict() for name, preset in DEFAULT_PRESETS.items()}

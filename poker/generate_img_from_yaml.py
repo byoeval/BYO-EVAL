@@ -1,9 +1,10 @@
 import argparse
-import yaml
 import os
 import sys
-import bpy
 import traceback
+
+import bpy
+import yaml
 
 from poker.config.models import PokerSceneModel
 from poker.scene_generator import generate_poker_scene_from_config
@@ -14,7 +15,7 @@ def load_yaml_config(config_path: str) -> dict:
     """Loads a YAML configuration file."""
     print(f"Loading configuration from: {config_path}")
     try:
-        with open(config_path, 'r') as f:
+        with open(config_path) as f:
             config = yaml.safe_load(f)
         if not config:
             raise ValueError("Configuration file is empty or invalid.")
@@ -33,8 +34,8 @@ def load_yaml_config(config_path: str) -> dict:
 def main():
     parser = argparse.ArgumentParser(description="Generate a single poker scene image from a YAML configuration file.")
     parser.add_argument("config_path", type=str, help="Path to the YAML configuration file.")
-    
-    # Parse arguments 
+
+    # Parse arguments
     argv = sys.argv[sys.argv.index("--") + 1:] if "--" in sys.argv else sys.argv[1:]
     args = parser.parse_args(argv)
     if not args:
@@ -44,12 +45,12 @@ def main():
     # --- Load Config ---
     full_config = load_yaml_config(args.config_path)
 
-    # --- Get and Prepare Output Path from Top Level --- 
+    # --- Get and Prepare Output Path from Top Level ---
     output_path_relative = full_config.get('output_path', 'poker/img/default_render.png')
     if not output_path_relative:
         print("Error: Top-level 'output_path' missing in configuration file.")
         print("Using default output path: poker/img/default_render.png")
-    
+
     final_output_path = os.path.abspath(os.path.join(os.path.dirname(__file__), output_path_relative))
     output_dir = os.path.dirname(final_output_path)
     try:
@@ -61,10 +62,10 @@ def main():
         sys.exit(1)
     # -----------------------------------------------------
 
-    # --- Clear default scene --- 
+    # --- Clear default scene ---
     clear_scene()
 
-    # --- Parse Config into Model --- 
+    # --- Parse Config into Model ---
     try:
         print("Parsing configuration into PokerSceneModel...")
         poker_scene_model = PokerSceneModel.from_dict(full_config)
@@ -94,7 +95,7 @@ def main():
         traceback.print_exc()
         sys.exit(1)
 
-    # --- Set Render Filepath and Render --- 
+    # --- Set Render Filepath and Render ---
     try:
         # Explicitly set the filepath before rendering
         bpy.context.scene.render.filepath = final_output_path
@@ -115,4 +116,4 @@ if __name__ == "__main__":
         try:
             sys.exit(1)
         except SystemExit:
-            os._exit(1) 
+            os._exit(1)

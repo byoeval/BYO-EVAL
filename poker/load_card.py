@@ -1,7 +1,8 @@
-import bpy
-import os
 import math
-from typing import Tuple, Dict, List, Optional, Union, Any
+import os
+from typing import Any
+
+import bpy
 
 # Only import CardModel needed here now
 from poker.config.models import CardModel
@@ -66,11 +67,11 @@ class PokerCardLoader:
     def load_card(
         self,
         card_name: str,
-        position: Tuple[float, float, float],
-        scale: Union[float, Tuple[float, float, float]] = 1.0,
+        position: tuple[float, float, float],
+        scale: float | tuple[float, float, float] = 1.0,
         face_up: bool = True,
-        rotation_euler: Optional[Tuple[float, float, float]] = None,
-    ) -> Optional[bpy.types.Object]:
+        rotation_euler: tuple[float, float, float] | None = None,
+    ) -> bpy.types.Object | None:
         """
         Load a specific card object from the blend file and place it in the scene.
 
@@ -94,12 +95,12 @@ class PokerCardLoader:
         object_name_in_blend = f"Card_{card_name}"
         print(f"Attempting to load object '{object_name_in_blend}' from '{self.blend_file_path}'...")
 
-        # --- Get object names before loading --- 
+        # --- Get object names before loading ---
         existing_object_names = set(bpy.data.objects.keys())
         loaded_obj = None
         new_object_name = None
 
-        # --- Always load the object from the blend file --- 
+        # --- Always load the object from the blend file ---
         # Blender will handle renaming if object_name_in_blend already exists (e.g., Card_9H.001)
         try:
             with bpy.data.libraries.load(self.blend_file_path, link=False) as (data_from, data_to):
@@ -114,7 +115,7 @@ class PokerCardLoader:
             print(f"Error loading library '{self.blend_file_path}': {e}")
             return None
 
-        # --- Find the newly added object --- 
+        # --- Find the newly added object ---
         current_object_names = set(bpy.data.objects.keys())
         newly_added_names = current_object_names - existing_object_names
 
@@ -152,7 +153,7 @@ class PokerCardLoader:
             print(f"Error: Failed to get the bpy.data.object for '{new_object_name}' after loading.")
             return None
 
-        # --- Link the *new* object to the scene's collection --- 
+        # --- Link the *new* object to the scene's collection ---
         try:
             # Ensure we link the identified new object, even if name is like .001
             # Check if it's already linked (shouldn't be, but belt-and-suspenders)
@@ -169,7 +170,7 @@ class PokerCardLoader:
                  bpy.data.objects.remove(bpy.data.objects[new_object_name], do_unlink=True)
              return None
 
-        # --- Ensure Recto Card Material is Opaque --- 
+        # --- Ensure Recto Card Material is Opaque ---
         if face_up:
             for slot in loaded_obj.material_slots:
                 if slot.material:
@@ -179,7 +180,7 @@ class PokerCardLoader:
                 else:
                     print(f"Warning: Material slot empty on '{loaded_obj.name}'. Cannot set blend mode.")
 
-        # --- Apply Card Back Material if face_down --- 
+        # --- Apply Card Back Material if face_down ---
         if not face_up:
             if loaded_obj.material_slots:
                 card_back_material = _get_or_create_card_back_material()
@@ -189,10 +190,10 @@ class PokerCardLoader:
             else:
                 print(f"Warning: Cannot apply card back material to '{loaded_obj.name}' because it has no material slots.")
 
-        # --- Set position, scale, and rotation for the new object --- 
+        # --- Set position, scale, and rotation for the new object ---
         loaded_obj.location = position
 
-        if isinstance(scale, (int, float)):
+        if isinstance(scale, int | float):
             loaded_obj.scale = (scale, scale, scale)
         elif isinstance(scale, tuple) and len(scale) == 3:
              loaded_obj.scale = scale
@@ -219,8 +220,8 @@ class PokerCardLoader:
 
     def build_card_from_config(
         self,
-        card_config: Union[Dict[str, Any], CardModel]
-    ) -> Optional[bpy.types.Object]:
+        card_config: dict[str, Any] | CardModel
+    ) -> bpy.types.Object | None:
         """
         Loads and places a card based on a configuration dictionary or CardModel.
 
@@ -261,9 +262,9 @@ if __name__ == "__main__":
         sys.path.append(workspace_root)
 
     try:
-        from scene_setup.general_setup import build_setup_from_config
         # Import the standalone river builder function
         from poker.river_builder import build_river_from_config
+        from scene_setup.general_setup import build_setup_from_config
     except ImportError as e:
         print(f"Error importing necessary modules: {e}")
         print("Please ensure the script is run from the workspace root or PYTHONPATH is set correctly.")
@@ -384,4 +385,4 @@ if __name__ == "__main__":
     except Exception as e:
         print(f"Error during rendering: {e}")
 
-    print("--- Test Finished ---") 
+    print("--- Test Finished ---")

@@ -1,16 +1,18 @@
-import bpy
-import random
 import math
-from typing import Union, List, Dict, Any
+import random
+from typing import Any
+
+import bpy
 
 # Models and Loader
-from poker.config.models import RiverModel, CardModel
+from poker.config.models import CardModel, RiverModel
 from poker.load_card import PokerCardLoader
+
 
 def build_river_from_config(
     card_loader: PokerCardLoader,
-    river_config: Union[Dict[str, Any], RiverModel]
-) -> List[bpy.types.Object]:
+    river_config: dict[str, Any] | RiverModel
+) -> list[bpy.types.Object]:
     """
     Builds a layout of multiple cards (river, pile, etc.) based on configuration,
     using the provided PokerCardLoader instance.
@@ -122,8 +124,8 @@ def build_river_from_config(
 
 # --- Test Section ---
 if __name__ == "__main__":
-    import sys
     import os
+    import sys
 
     # Ensure the workspace root is in the Python path
     workspace_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
@@ -132,8 +134,9 @@ if __name__ == "__main__":
 
     try:
         import bpy
-        from scene_setup.general_setup import build_setup_from_config
+
         from poker.load_card import PokerCardLoader
+        from scene_setup.general_setup import build_setup_from_config
     except ImportError as e:
         print(f"Error importing necessary modules: {e}")
         print("Please ensure the script is run from the workspace root or PYTHONPATH is set correctly.")
@@ -235,4 +238,4 @@ if __name__ == "__main__":
     except Exception as e:
         print(f"Error during rendering: {e}")
 
-    print("--- River Builder Test Finished ---") 
+    print("--- River Builder Test Finished ---")

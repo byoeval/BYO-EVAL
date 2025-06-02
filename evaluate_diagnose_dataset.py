@@ -8,33 +8,36 @@ This script tests both Azure OpenAI and Groq models on the dataset
 and provides detailed evaluation metrics and visualizations.
 """
 
-import os
-import json
-import time
-import base64
-import pandas as pd
-import numpy as np
-from pathlib import Path
-from datetime import datetime
-from typing import List, Dict, Tuple, Any
-from dotenv import load_dotenv
 import argparse
+import json
+import os
+import time
+from datetime import datetime
+from pathlib import Path
+
+import pandas as pd
+from dotenv import load_dotenv
 
 # Best thing in terminal :D
 from rich.console import Console
-from rich.progress import Progress, SpinnerColumn, TextColumn, BarColumn, TaskProgressColumn, TimeRemainingColumn, TimeElapsedColumn
 from rich.panel import Panel
+from rich.progress import (
+    BarColumn,
+    Progress,
+    SpinnerColumn,
+    TaskProgressColumn,
+    TextColumn,
+    TimeElapsedColumn,
+    TimeRemainingColumn,
+)
+from rich.prompt import Confirm, Prompt
 from rich.table import Table
-from rich.prompt import Prompt, Confirm
-from rich.markdown import Markdown
+
+from evaluation_pipeline.answer_extractor import AnswerExtractor
 
 # Local import
-from evaluation_pipeline.get_vlm import (
-    VLMProvider, VLMAnalysisType, get_vlm, VLMQuestionHandler
-)
-
+from evaluation_pipeline.get_vlm import VLMProvider, get_vlm
 from evaluation_pipeline.question_handler import QuestionHandler
-from evaluation_pipeline.answer_extractor import AnswerExtractor
 
 console = Console()
 
@@ -125,7 +128,7 @@ PROVIDERS = {
 
 GAME_TYPE = None  # Will be set by prompt
 
-def find_images_and_annotations() -> List[Tuple[Path, Path]]:
+def find_images_and_annotations() -> list[tuple[Path, Path]]:
     """Find all matching image and annotation files in the dataset.
 
     Returns:
@@ -152,7 +155,7 @@ def find_images_and_annotations() -> List[Tuple[Path, Path]]:
 
     return matches
 
-def extract_annotation_info(annotation_path: Path) -> Dict:
+def extract_annotation_info(annotation_path: Path) -> dict:
     """Extract key information from an annotation file.
 
     Args:
@@ -161,7 +164,7 @@ def extract_annotation_info(annotation_path: Path) -> Dict:
     Returns:
         Dictionary with extracted information
     """
-    with open(annotation_path, 'r') as f:
+    with open(annotation_path) as f:
         data = json.load(f)
 
     # Extract board information --> only for chess for now
@@ -172,7 +175,7 @@ def extract_annotation_info(annotation_path: Path) -> Dict:
     piece_count = len(pieces)
     piece_types = {}
 
-    for piece_id, piece_data in pieces.items():
+    for _piece_id, piece_data in pieces.items():
         piece_type = piece_data.get('type')
         if piece_type in piece_types:
             piece_types[piece_type] += 1
@@ -188,7 +191,7 @@ def extract_annotation_info(annotation_path: Path) -> Dict:
         "all_pieces": pieces
     }
 
-def generate_questions_for_image(annotation_path: Path, task: str, reformulate: str="", pre_prompt: str="") -> Tuple[List[str], List[str], List]:
+def generate_questions_for_image(annotation_path: Path, task: str, reformulate: str="", pre_prompt: str="") -> tuple[list[str], list[str], list]:
     global GAME_TYPE
     """Generate questions and answers for an image based on the task.
 
@@ -202,7 +205,7 @@ def generate_questions_for_image(annotation_path: Path, task: str, reformulate: 
         Tuple containing lists of questions, answers, and dynamic values
     """
     # Load annotation to check piece count before generating questions
-    with open(annotation_path, 'r') as f:
+    with open(annotation_path) as f:
         annotation_data = json.load(f)
 
     pieces = annotation_data.get('pieces', {})
@@ -278,7 +281,7 @@ def generate_questions_for_image(annotation_path: Path, task: str, reformulate: 
     # Generate fallback questions if no suitable questions found
     if not question_keys:
         if task == "identification":
-            return ["How many different types of pieces are on the board?"], ["0" if piece_count == 0 else str(len(set(p.get('type') for p in pieces.values() if 'type' in p)))], []
+            return ["How many different types of pieces are on the board?"], ["0" if piece_count == 0 else str(len({p.get('type') for p in pieces.values() if 'type' in p}))], []
         elif task == "localization":
             return ["Is the board set up with pieces?"], ["No" if piece_count == 0 else "Yes"], []
         else:
@@ -287,7 +290,7 @@ def generate_questions_for_image(annotation_path: Path, task: str, reformulate: 
     try:
         # Use the question keys directly with the QuestionHandler and AnswerExtractor
         question_handler = QuestionHandler()
-        
+
         # Handle different reformulation formats
         instruction_specs = []
         if reformulate == "declarative":
@@ -308,7 +311,7 @@ def generate_questions_for_image(annotation_path: Path, task: str, reformulate: 
                     instruction_specs.append("fill_in")
                 else:
                     instruction_specs.append(r_type)
-        
+
         # print inputs
         print("Game type: ", GAME_TYPE)
         print("Question keys: ", question_keys)
@@ -335,7 +338,7 @@ def generate_questions_for_image(annotation_path: Path, task: str, reformulate: 
         else:
             return [], [], []
 
-def modify_counting_questions(questions: List[str]) -> List[str]:
+def modify_counting_questions(questions: list[str]) -> list[str]:
     """Modify counting-related questions to explicitly request numeric answers."""
     modified_questions = []
 
@@ -356,7 +359,7 @@ def modify_counting_questions(questions: List[str]) -> List[str]:
 
     return modified_questions
 
-def modify_identification_questions(questions: List[str]) -> List[str]:
+def modify_identification_questions(questions: list[str]) -> list[str]:
     """Modify identification questions to request more specific answers."""
     modified_questions = []
 
@@ -384,7 +387,7 @@ def modify_identification_questions(questions: List[str]) -> List[str]:
 
     return modified_questions
 
-def modify_localization_questions(questions: List[str]) -> List[str]:
+def modify_localization_questions(questions: list[str]) -> list[str]:
     """Modify localization questions to request more precise location descriptions."""
     modified_questions = []
 
@@ -439,7 +442,7 @@ def extract_numeric_value(answer) -> str:
         The extracted numeric value as a string
     """
     import re
-    
+
     # Convert answer to string if it's a dictionary or other non-string type
     if not isinstance(answer, str):
         answer = str(answer)
@@ -474,17 +477,17 @@ def extract_numeric_value(answer) -> str:
     # If no numbers found, return original string
     return answer.strip()
 
-def evaluate_vlm_on_task(vlm, image_path: Path, annotation_path: Path, question_keys: List[str], reformulate:str, pre_prompt:str) -> Dict:
+def evaluate_vlm_on_task(vlm, image_path: Path, annotation_path: Path, question_keys: list[str], reformulate:str, pre_prompt:str) -> dict:
     """Evaluate a VLM on a specific task for one image."""
     global GAME_TYPE # Make sure GAME_TYPE is accessible
 
     console.print(f"[bold magenta][DEBUG] Entered evaluate_vlm_on_task for image: {image_path}, annotation: {annotation_path}, question_keys: {question_keys}, reformulate: {reformulate}, pre_prompt: {pre_prompt}")
     # Load annotation data
-    with open(annotation_path, 'r') as f:
+    with open(annotation_path) as f:
         annotation_data = json.load(f)
 
     if not question_keys:
-        console.print(f"[bold red][DEBUG] No question keys provided for evaluation.")
+        console.print("[bold red][DEBUG] No question keys provided for evaluation.")
         return {
             "error": "No question keys provided for evaluation.",
             "accuracy": 0,
@@ -500,7 +503,7 @@ def evaluate_vlm_on_task(vlm, image_path: Path, annotation_path: Path, question_
     answer_extractor = AnswerExtractor()
 
     # Prepare instruction_specs for QuestionHandler
-    instruction_specs: List[str]
+    instruction_specs: list[str]
     if reformulate == "declarative":
         instruction_specs = ["declarative"]
     elif reformulate == "missing_word": # Assuming 'missing_word' maps to 'fill_in'
@@ -555,7 +558,7 @@ def evaluate_vlm_on_task(vlm, image_path: Path, annotation_path: Path, question_
 
     # Generate expected answers using AnswerExtractor
     # Ensure the order of answers matches the order of generated questions (which is based on question_keys)
-    expected_answers = [answer_extractor.extract_answer(annotation_data, key, GAME_TYPE, question) for key, question in zip(question_keys, questions)]
+    expected_answers = [answer_extractor.extract_answer(annotation_data, key, GAME_TYPE, question) for key, question in zip(question_keys, questions, strict=False)]
     console.print(f"[bold magenta][DEBUG] Expected answers: {expected_answers}")
 
     # Get VLM answers for each question
@@ -565,7 +568,7 @@ def evaluate_vlm_on_task(vlm, image_path: Path, annotation_path: Path, question_
     error_sum = 0
     numeric_count = 0
 
-    for i, (question, expected) in enumerate(zip(questions, expected_answers)):
+    for i, (question, expected) in enumerate(zip(questions, expected_answers, strict=False)):
         question_key = question_keys[i] if i < len(question_keys) else None
         console.print(f"[bold yellow][DEBUG] Question key:[/bold yellow] {question_key}")
         console.print(f"[bold yellow][DEBUG] Question sent to VLM:[/bold yellow] {question!r}")
@@ -579,7 +582,7 @@ def evaluate_vlm_on_task(vlm, image_path: Path, annotation_path: Path, question_
             console.print(f"[bold yellow][DEBUG] VLM answer:[/bold yellow] {answer!r}")
             vlm_answers.append(answer)
             call_metrics.append(result.get("call_metrics", {}))
-            
+
             # Use Regex for numeric extraction
             if any(keyword in question.lower() for keyword in ["how many", "count","there are","number", "squares"]):
                 try:
@@ -634,10 +637,10 @@ def evaluate_vlm_on_task(vlm, image_path: Path, annotation_path: Path, question_
             elif question_key == "localize_card_on_grid_3x3" or "on which cell of the 3x3 grid" in question.lower():
                 answer_lower = answer.lower().strip()
                 expected_lower = expected.lower().strip() if expected else ""
-                
+
                 # Check if the expected position word appears in the answer
                 is_correct = expected_lower in answer_lower
-                
+
                 if is_correct:
                     correct_count += 1
             else:
@@ -661,7 +664,7 @@ def evaluate_vlm_on_task(vlm, image_path: Path, annotation_path: Path, question_
     nmae = error_sum / numeric_count if numeric_count > 0 else 0
 
     details = []
-    for i, (q, answer) in enumerate(zip(questions, vlm_answers)):
+    for i, (q, answer) in enumerate(zip(questions, vlm_answers, strict=False)):
         expected = expected_answers[i] # Get corresponding expected answer
         # Ensure expected is a string, as downstream code expects it
         expected_str = str(expected) if expected is not None else ""
@@ -691,7 +694,7 @@ def evaluate_vlm_on_task(vlm, image_path: Path, annotation_path: Path, question_
             # Special handling for 3x3 grid position answers
             answer_lower = answer.lower().strip() if isinstance(answer, str) else str(answer).lower().strip()
             expected_lower = expected_str.lower().strip()
-            
+
             # Check if the expected position word appears in the answer
             is_correct = expected_lower in answer_lower
             console.print(f"[bold cyan][DEBUG] 3x3 grid position check: expected={expected_lower}, answer={answer_lower}, is_correct={is_correct}")
@@ -711,7 +714,7 @@ def evaluate_vlm_on_task(vlm, image_path: Path, annotation_path: Path, question_
                 extracted_answer = extract_numeric_value(answer)
             except Exception as e:
                 console.print(f"[bold red][DEBUG] Error extracting numeric value for details dict: {e}")
-        
+
         details.append({
             "question": q,
             "expected": expected_str,
@@ -732,10 +735,10 @@ def evaluate_vlm_on_task(vlm, image_path: Path, annotation_path: Path, question_
         "correct_count": correct_count,
         "questions": questions,
         "expected_answers": expected_answers,
-        "call_metrics" : call_metrics   
+        "call_metrics" : call_metrics
     }
 
-def calculate_additional_metrics(results: Dict) -> Dict:
+def calculate_additional_metrics(results: dict) -> dict:
     """Calculate additional metrics beyond basic accuracy and NMAE.
 
     Args:
@@ -801,7 +804,7 @@ def calculate_additional_metrics(results: Dict) -> Dict:
 
             # For consistency and reliability
             response_consistency = {}  # Track responses to identical questions
-            
+
             # Lists to store per-image metrics for std calculations
             image_accuracies = []
             image_f1_scores = []
@@ -814,7 +817,7 @@ def calculate_additional_metrics(results: Dict) -> Dict:
             image_consistencies = []
 
             # Process each image
-            for image_name, image_data in results["providers"][provider]["images"].items():
+            for _image_name, image_data in results["providers"][provider]["images"].items():
                 if task not in image_data["tasks"]:
                     continue
 
@@ -853,12 +856,12 @@ def calculate_additional_metrics(results: Dict) -> Dict:
                     q_key = detail["question"]
                     if q_key not in response_consistency:
                         response_consistency[q_key] = []
-                    
+
                     # Convert answer to string if it's a dictionary or other non-hashable type
                     answer = detail["answer"]
-                    if isinstance(answer, dict) or not isinstance(answer, (str, int, float, bool)):
+                    if isinstance(answer, dict) or not isinstance(answer, str | int | float | bool):
                         answer = str(answer)
-                        
+
                     response_consistency[q_key].append(answer)
 
                     # Calculate metrics for numeric questions
@@ -872,7 +875,7 @@ def calculate_additional_metrics(results: Dict) -> Dict:
                             abs_errors.append(error)
                             squared_errors.append(squared_error)
                             expected_values.append(expected_val)
-                            
+
                             # Also track per-image errors for std calculation
                             image_abs_errors.append(error)
                             image_squared_errors.append(squared_error)
@@ -885,45 +888,45 @@ def calculate_additional_metrics(results: Dict) -> Dict:
                     # Accuracy
                     image_accuracy = image_correct / image_total
                     image_accuracies.append(image_accuracy)
-                    
+
                     # Precision, recall, F1
                     if (image_true_positive + image_false_positive) > 0:
                         image_precision = image_true_positive / (image_true_positive + image_false_positive)
                         image_precisions.append(image_precision)
-                    
+
                     if (image_true_positive + image_false_negative) > 0:
                         image_recall = image_true_positive / (image_true_positive + image_false_negative)
                         image_recalls.append(image_recall)
-                    
+
                     if len(image_precisions) > 0 and len(image_recalls) > 0:
                         last_precision = image_precisions[-1]
                         last_recall = image_recalls[-1]
                         if (last_precision + last_recall) > 0:
                             image_f1 = 2 * last_precision * last_recall / (last_precision + last_recall)
                             image_f1_scores.append(image_f1)
-                
+
                 # Calculate per-image error metrics for numeric questions
                 if image_abs_errors:
                     # MAE
                     image_mae = sum(image_abs_errors) / len(image_abs_errors)
                     image_maes.append(image_mae)
-                    
+
                     # MSE
                     image_mse = sum(image_squared_errors) / len(image_squared_errors)
                     image_mses.append(image_mse)
-                    
+
                     # RMSE
                     image_rmse = image_mse ** 0.5
                     image_rmses.append(image_rmse)
-                    
+
                     # NMAE
                     image_normalized_errors = []
-                    for error, expected in zip(image_abs_errors, image_expected_values):
+                    for error, expected in zip(image_abs_errors, image_expected_values, strict=False):
                         if expected != 0:
                             image_normalized_errors.append(error / expected)
                         else:
                             image_normalized_errors.append(1.0 if error > 0 else 0.0)
-                    
+
                     if image_normalized_errors:
                         image_nmae = sum(image_normalized_errors) / len(image_normalized_errors)
                         image_nmaes.append(image_nmae)
@@ -951,7 +954,7 @@ def calculate_additional_metrics(results: Dict) -> Dict:
 
                 # Calculate NMAE (Normalized Mean Absolute Error)
                 normalized_errors = []
-                for error, expected in zip(abs_errors, expected_values):
+                for error, expected in zip(abs_errors, expected_values, strict=False):
                     if expected != 0:
                         normalized_errors.append(error / expected)
                     else:
@@ -969,13 +972,13 @@ def calculate_additional_metrics(results: Dict) -> Dict:
 
             # Calculate consistency (same answer to same question)
             consistency_scores = []
-            for question, answers in response_consistency.items():
+            for _question, answers in response_consistency.items():
                 if len(answers) > 1:
                     # Calculate how often the most common answer appears
                     answer_counts = {}
                     for answer in answers:
                         # Ensure the answer is a hashable type (str, int, float, bool, tuple)
-                        if not isinstance(answer, (str, int, float, bool, tuple)):
+                        if not isinstance(answer, str | int | float | bool | tuple):
                             answer = str(answer)
                         answer_counts[answer] = answer_counts.get(answer, 0) + 1
                     most_common = max(answer_counts.values())
@@ -992,25 +995,25 @@ def calculate_additional_metrics(results: Dict) -> Dict:
             # Calculate standard deviations for other metrics
             if len(image_accuracies) > 1:
                 task_metrics["accuracy_std"] = calculate_std(image_accuracies)
-            
+
             if len(image_f1_scores) > 1:
                 task_metrics["f1_score_std"] = calculate_std(image_f1_scores)
-            
+
             if len(image_precisions) > 1:
                 task_metrics["precision_std"] = calculate_std(image_precisions)
-            
+
             if len(image_recalls) > 1:
                 task_metrics["recall_std"] = calculate_std(image_recalls)
-            
+
             if len(image_maes) > 1:
                 task_metrics["mae_std"] = calculate_std(image_maes)
-            
+
             if len(image_mses) > 1:
                 task_metrics["mse_std"] = calculate_std(image_mses)
-            
+
             if len(image_rmses) > 1:
                 task_metrics["rmse_std"] = calculate_std(image_rmses)
-            
+
             if len(image_nmaes) > 1:
                 task_metrics["nmae_std"] = calculate_std(image_nmaes)
 
@@ -1021,21 +1024,21 @@ def calculate_additional_metrics(results: Dict) -> Dict:
 
 def calculate_std(values):
     """Helper function to calculate standard deviation.
-    
+
     Args:
         values: List of values
-        
+
     Returns:
         Standard deviation
     """
     if len(values) <= 1:
         return 0.0
-    
+
     mean = sum(values) / len(values)
     variance = sum((val - mean) ** 2 for val in values) / len(values)
     return variance ** 0.5
 
-def save_predictions_to_csv(results: Dict, output_dir: Path, pre_prompt_key: str="default") -> None:
+def save_predictions_to_csv(results: dict, output_dir: Path, pre_prompt_key: str="default") -> None:
     """Save all predictions and targets to CSV files for post-experiment analysis.
 
     Args:
@@ -1046,11 +1049,11 @@ def save_predictions_to_csv(results: Dict, output_dir: Path, pre_prompt_key: str
     csv_dir = output_dir / "csv_results"
     csv_dir.mkdir(exist_ok=True, parents=True)
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    
+
     # Get the reformulation type from the results
     reformulation_type = results.get("reformulation_type", "")
     reformulate_suffix = f"_{reformulation_type}" if reformulation_type else ""
-    
+
     # Extract providers and tasks
     providers = list(results["providers"].keys())
     all_tasks = []
@@ -1288,7 +1291,7 @@ def save_predictions_to_csv(results: Dict, output_dir: Path, pre_prompt_key: str
         df.to_csv(summary_file, index=False)
         console.print(f"[green]Global summary metrics saved to {summary_file}[/green]")
 
-def generate_latex_tables(results: Dict, output_dir: Path, pre_prompt_key: str="default") -> None:
+def generate_latex_tables(results: dict, output_dir: Path, pre_prompt_key: str="default") -> None:
     """Generate LaTeX tables for the evaluation results in NeurIPS style.
 
     Args:
@@ -1299,7 +1302,7 @@ def generate_latex_tables(results: Dict, output_dir: Path, pre_prompt_key: str="
     latex_dir = output_dir / "latex_tables"
     latex_dir.mkdir(exist_ok=True, parents=True)
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    
+
     # Get the reformulation type from the results
     reformulation_type = results.get("reformulation_type", "")
     reformulation_text = f" with {reformulation_type} reformulation" if reformulation_type else ""
@@ -1507,7 +1510,7 @@ def generate_latex_tables(results: Dict, output_dir: Path, pre_prompt_key: str="
             metrics = ["Accuracy", "NMAE", "F1", "Precision", "Recall"]
             metric_keys = ["accuracy", "normalized_mae", "f1_score", "precision", "recall"]
 
-            for metric, key in zip(metrics, metric_keys):
+            for metric, key in zip(metrics, metric_keys, strict=False):
                 f.write(f"\\textbf{{{metric}}} ")
                 for provider in providers:
                     if (provider in results["providers"] and
@@ -1619,10 +1622,10 @@ All values are averaged across """ + str(len(list(results["providers"][providers
 
     console.print(f"[green]NeurIPS-style LaTeX tables generated in {latex_dir}[/green]")
     console.print(f"[blue]1. Overall summary table: {latex_summary}[/blue]")
-    console.print(f"[blue]2. Task-specific summaries in task folders[/blue]")
+    console.print("[blue]2. Task-specific summaries in task folders[/blue]")
     console.print(f"[blue]3. Style preamble: {preamble_file}[/blue]")
 
-def generate_extended_latex_tables(results: Dict, metrics: Dict, output_dir: Path, pre_prompt_key: str="default", include_std: bool = True) -> None:
+def generate_extended_latex_tables(results: dict, metrics: dict, output_dir: Path, pre_prompt_key: str="default", include_std: bool = True) -> None:
     """Generate enhanced LaTeX tables with additional metrics for paper.
 
     Args:
@@ -1635,7 +1638,7 @@ def generate_extended_latex_tables(results: Dict, metrics: Dict, output_dir: Pat
     latex_dir = output_dir / "latex_tables"
     latex_dir.mkdir(exist_ok=True, parents=True)
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    
+
     # Get the reformulation type from the results
     reformulation_type = results.get("reformulation_type", "")
     reformulation_text = f" with {reformulation_type} reformulation" if reformulation_type else ""
@@ -1647,7 +1650,7 @@ def generate_extended_latex_tables(results: Dict, metrics: Dict, output_dir: Pat
     for provider in providers:
         for task in metrics[provider]["tasks"]:
             tasks.add(task)
-    tasks = sorted(list(tasks))
+    tasks = sorted(tasks)
 
     # Create task-specific directories if they don't exist
     for task in tasks:
@@ -1720,7 +1723,7 @@ def generate_extended_latex_tables(results: Dict, metrics: Dict, output_dir: Pat
             f.write("\\midrule\n")
 
             # Write each model's metrics for this task
-            for metric_idx, (name, key, direction) in enumerate(metric_columns):
+            for _metric_idx, (name, key, direction) in enumerate(metric_columns):
                 # Skip NMAE and MSE for non-counting tasks
                 if (key in ["nmae", "mse", "mae", "rmse"] and
                     "counting" not in task.lower()):
@@ -1737,11 +1740,7 @@ def generate_extended_latex_tables(results: Dict, metrics: Dict, output_dir: Pat
                         key in metrics[provider]["tasks"][task]):
 
                         value = metrics[provider]["tasks"][task][key]
-                        if best_value is None:
-                            best_value = value
-                        elif direction == "↑" and value > best_value:
-                            best_value = value
-                        elif direction == "↓" and value < best_value:
+                        if best_value is None or direction == "↑" and value > best_value or direction == "↓" and value < best_value:
                             best_value = value
 
                 # Write values for each model, highlighting the best one
@@ -1781,9 +1780,9 @@ def generate_extended_latex_tables(results: Dict, metrics: Dict, output_dir: Pat
 \\small
 \\textit{Note:} Best performance on each metric is highlighted in \\textbf{bold}.
 Arrows indicate whether higher (↑) or lower (↓) values are better.
-NMAE = Normalized Mean Absolute Error; RMSE = Root Mean Squared Error.""" + 
-(f" Reformulation: {reformulation_type}." if reformulation_type else "") + 
-(f" Values shown with $\\pm$ standard deviation." if include_std else "") + """
+NMAE = Normalized Mean Absolute Error; RMSE = Root Mean Squared Error.""" +
+(f" Reformulation: {reformulation_type}." if reformulation_type else "") +
+(" Values shown with $\\pm$ standard deviation." if include_std else "") + """
 \\end{minipage}
 """)
 
@@ -1855,7 +1854,7 @@ NMAE = Normalized Mean Absolute Error; RMSE = Root Mean Squared Error.""" +
 
             # Write each model's metrics for this task
             # We're going to re-organize by metric rather than by model
-            for metric_idx, (name, key, direction) in enumerate(metric_columns):
+            for _metric_idx, (name, key, direction) in enumerate(metric_columns):
                 f.write(f"{name} {direction} ")
 
                 # Find best value for this metric
@@ -1867,16 +1866,12 @@ NMAE = Normalized Mean Absolute Error; RMSE = Root Mean Squared Error.""" +
                         key in metrics[provider]["tasks"][task]):
 
                         value = metrics[provider]["tasks"][task][key]
-                        if best_value is None:
-                            best_value = value
-                        elif direction == "↑" and value > best_value:
-                            best_value = value
-                        elif direction == "↓" and value < best_value:
+                        if best_value is None or direction == "↑" and value > best_value or direction == "↓" and value < best_value:
                             best_value = value
 
                 # Write values for each model, highlighting the best one
                 for provider in providers:
-                    for col_idx, (_, metric_key, _) in enumerate(metric_columns):
+                    for _col_idx, (_, metric_key, _) in enumerate(metric_columns):
                         if metric_key == key:
                             if (provider in metrics and
                                 "tasks" in metrics[provider] and
@@ -1916,20 +1911,20 @@ NMAE = Normalized Mean Absolute Error; RMSE = Root Mean Squared Error.""" +
 \\small
 \\textit{Note:} Best performance on each metric is highlighted in \\textbf{bold}.
 Arrows indicate whether higher (↑) or lower (↓) values are better.
-NMAE = Normalized Mean Absolute Error; RMSE = Root Mean Squared Error.""" + 
+NMAE = Normalized Mean Absolute Error; RMSE = Root Mean Squared Error.""" +
 (f" Reformulation: {reformulation_type}." if reformulation_type else "") + """
 \\end{minipage}
 """)
 
             f.write("\\end{table*}\n")
 
-    console.print(f"[green]Enhanced metrics tables generated:[/green]")
+    console.print("[green]Enhanced metrics tables generated:[/green]")
     console.print(f"[blue]1. Global comparison: {metrics_comparison_file}[/blue]")
-    console.print(f"[blue]2. Task-specific metrics in task folders[/blue]")
+    console.print("[blue]2. Task-specific metrics in task folders[/blue]")
 
-def run_evaluation(selected_images: List[Tuple[Path, Path]], selected_providers: List[str],
-                  selected_tasks: List[str], reformulate: str="", pre_prompt: str="", 
-                  pre_prompt_key: str="default") -> Dict:
+def run_evaluation(selected_images: list[tuple[Path, Path]], selected_providers: list[str],
+                  selected_tasks: list[str], reformulate: str="", pre_prompt: str="",
+                  pre_prompt_key: str="default") -> dict:
     """Run the evaluation on selected images, providers, and tasks.
 
     Args:
@@ -2080,17 +2075,17 @@ def run_evaluation(selected_images: List[Tuple[Path, Path]], selected_providers:
                 summary_table.add_column(f"{PROVIDERS[provider]['model_name'].upper()}", style="green")
 
         summary_table.add_column("Reformulation", style="magenta")
-                
+
         for task in selected_tasks:
             row_data = [task]
             for provider in selected_providers:
                 if provider in results["providers"] and task in results["providers"][provider]["tasks"]:
                     metrics = results["providers"][provider]["tasks"][task]
                     row_data.append(f"{metrics['accuracy']:.2f}")
-            
+
             # Add reformulation as the last column
             row_data.append(displayed_reformulation)
-            
+
             summary_table.add_row(*row_data)
 
         console.print(summary_table)
@@ -2119,7 +2114,7 @@ def run_evaluation(selected_images: List[Tuple[Path, Path]], selected_providers:
 
     return results
 
-def display_enhanced_metrics_summary(metrics: Dict, reformulation_type: str = "", include_std: bool = True) -> None:
+def display_enhanced_metrics_summary(metrics: dict, reformulation_type: str = "", include_std: bool = True) -> None:
     """Display a summary table of the enhanced metrics in the terminal.
 
     Args:
@@ -2155,7 +2150,7 @@ def display_enhanced_metrics_summary(metrics: Dict, reformulation_type: str = ""
         metric_keys = ["accuracy", "f1_score", "precision", "recall", "mae", "mse", "nmae", "rmse", "reliability", "consistency"]
         metric_names = ["Accuracy", "F1 Score", "Precision", "Recall", "MAE", "MSE", "NMAE", "RMSE", "Reliability", "Consistency"]
 
-        for metric_key, metric_name in zip(metric_keys, metric_names):
+        for metric_key, metric_name in zip(metric_keys, metric_names, strict=False):
             row = [metric_name]
 
             for provider in providers:
@@ -2166,7 +2161,7 @@ def display_enhanced_metrics_summary(metrics: Dict, reformulation_type: str = ""
 
                     value = metrics[provider]["tasks"][task][metric_key]
                     std_key = f"{metric_key}_std"
-                    
+
                     if include_std and std_key in metrics[provider]["tasks"][task]:
                         std_value = metrics[provider]["tasks"][task][std_key]
                         row.append(f"{value:.3f} (±{std_value:.3f})")
@@ -2179,9 +2174,9 @@ def display_enhanced_metrics_summary(metrics: Dict, reformulation_type: str = ""
 
         console.print(table)
 
-def save_combined_results_to_csv(all_results: Dict[str, Dict], output_dir: Path) -> None:
+def save_combined_results_to_csv(all_results: dict[str, dict], output_dir: Path) -> None:
     """Save combined results from all pre-prompts to CSV files for cross-analysis.
-    
+
     Args:
         all_results: Dictionary mapping pre-prompt keys to their respective results
         output_dir: Directory to save the combined CSV files
@@ -2189,40 +2184,40 @@ def save_combined_results_to_csv(all_results: Dict[str, Dict], output_dir: Path)
     csv_dir = output_dir / "csv_results"
     csv_dir.mkdir(exist_ok=True, parents=True)
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    
+
     # Create a combined predictions CSV file
     combined_predictions_file = csv_dir / f"combined_predictions_{timestamp}.csv"
     combined_predictions_data = []
-    
+
     # Create a combined metrics summary CSV file
     combined_metrics_file = csv_dir / f"combined_metrics_summary_{timestamp}.csv"
     combined_metrics_data = []
-    
+
     # Process each pre-prompt's results
     for combined_key, results in all_results.items():
         # Extract providers and tasks
         providers = list(results["providers"].keys())
         reformulation_type = results.get("reformulation_type", "")
-        
+
         # Extract the actual pre-prompt key from the combined key
         # For keys like "declarative_helpful", extract "helpful"
         pre_prompt_key = combined_key
         if reformulation_type and "_" in combined_key and combined_key.startswith(reformulation_type + "_"):
             pre_prompt_key = combined_key[(len(reformulation_type) + 1):]  # +1 for the underscore
-        
+
         # Collect prediction data
         for provider in providers:
             if provider not in results["providers"]:
                 continue
-                
+
             provider_name = results["providers"][provider]["model"]
-            
+
             for image_name, image_data in results["providers"][provider]["images"].items():
                 for task_name, task_data in image_data["tasks"].items():
                     # Add each question, expected answer, and model answer to the data
                     for detail in task_data.get("details", []):
                         is_numeric = any(keyword in detail["question"].lower() for keyword in ["how many", "count"])
-                        
+
                         row = {
                             "provider": provider,
                             "model": provider_name,
@@ -2236,22 +2231,22 @@ def save_combined_results_to_csv(all_results: Dict[str, Dict], output_dir: Path)
                             "is_correct": detail["correct"],
                             "is_numeric": is_numeric
                         }
-                        
+
                         # Add extracted values for numeric questions
                         if is_numeric:
                             row["extracted_target"] = detail.get("extracted_expected")
                             row["extracted_prediction"] = detail.get("extracted_answer")
-                            
+
                             # Add error metrics if available
                             for metric in ["absolute_error", "squared_error", "normalized_error", "percentage_error"]:
                                 if metric in detail:
                                     row[metric] = detail[metric]
-                        
+
                         combined_predictions_data.append(row)
-            
+
             # Collect summary metrics data
             enhanced_metrics = calculate_additional_metrics(results)
-            
+
             for task, task_metrics in results["providers"][provider]["tasks"].items():
                 # Get the task metrics
                 metrics_row = {
@@ -2264,7 +2259,7 @@ def save_combined_results_to_csv(all_results: Dict[str, Dict], output_dir: Path)
                     "normalized_mae": task_metrics.get("normalized_mae", float('nan')),
                     "total_questions": task_metrics.get("count", 0)
                 }
-                
+
                 # Add enhanced metrics if available
                 if provider in enhanced_metrics and task in enhanced_metrics[provider]["tasks"]:
                     enhanced_task_metrics = enhanced_metrics[provider]["tasks"][task]
@@ -2289,20 +2284,20 @@ def save_combined_results_to_csv(all_results: Dict[str, Dict], output_dir: Path)
                         "nmae_std": enhanced_task_metrics.get("nmae_std", float('nan')),
                         "consistency_std": enhanced_task_metrics.get("consistency_std", float('nan'))
                     })
-                
+
                 combined_metrics_data.append(metrics_row)
-    
+
     # Save to CSV files
     if combined_predictions_data:
         df = pd.DataFrame(combined_predictions_data)
         df.to_csv(combined_predictions_file, index=False)
         console.print(f"[green]Combined predictions across all pre-prompts saved to {combined_predictions_file}[/green]")
-    
+
     if combined_metrics_data:
         df = pd.DataFrame(combined_metrics_data)
         df.to_csv(combined_metrics_file, index=False)
         console.print(f"[green]Combined metrics across all pre-prompts saved to {combined_metrics_file}[/green]")
-    
+
     # Also create task-specific combined files for easier analysis
     task_metrics = {}
     for row in combined_metrics_data:
@@ -2310,16 +2305,16 @@ def save_combined_results_to_csv(all_results: Dict[str, Dict], output_dir: Path)
         if task not in task_metrics:
             task_metrics[task] = []
         task_metrics[task].append(row)
-    
+
     for task, metrics in task_metrics.items():
         task_file = csv_dir / f"combined_{task}_metrics_{timestamp}.csv"
         df = pd.DataFrame(metrics)
         df.to_csv(task_file, index=False)
         console.print(f"[green]Combined metrics for {task} task saved to {task_file}[/green]")
 
-def display_combined_metrics_summary(all_results: Dict[str, Dict], include_std: bool = True) -> None:
+def display_combined_metrics_summary(all_results: dict[str, dict], include_std: bool = True) -> None:
     """Display a combined metrics summary table comparing different reformulation types.
-    
+
     Args:
         all_results: Dictionary mapping result keys to their respective results
         include_std: Whether to include standard deviation values in parentheses
@@ -2328,73 +2323,73 @@ def display_combined_metrics_summary(all_results: Dict[str, Dict], include_std: 
     reformulation_types = set()
     providers_by_reformulation = {}
     tasks_by_provider = {}
-    
+
     # First pass to extract metadata
-    for combined_key, results in all_results.items():
+    for _combined_key, results in all_results.items():
         reformulation_type = results.get("reformulation_type", "")
         reformulation_display = reformulation_type if reformulation_type else "None"
         reformulation_types.add(reformulation_display)
-        
+
         # Track which providers are used with each reformulation type
         if reformulation_display not in providers_by_reformulation:
             providers_by_reformulation[reformulation_display] = set()
-        
+
         for provider in results["providers"]:
             providers_by_reformulation[reformulation_display].add(provider)
-            
+
             # Track which tasks are used with each provider
             if provider not in tasks_by_provider:
                 tasks_by_provider[provider] = set()
-            
+
             for task in results["providers"][provider]["tasks"]:
                 tasks_by_provider[provider].add(task)
-    
+
     # Convert to sorted lists for consistent display
     reformulation_types = sorted(reformulation_types)
-    
+
     # Define metrics to display
-    metric_keys = ["accuracy", "f1_score", "precision", "recall", 
-                  "mae", "mse", "nmae", "rmse", 
+    metric_keys = ["accuracy", "f1_score", "precision", "recall",
+                  "mae", "mse", "nmae", "rmse",
                   "reliability", "consistency"]
     metric_names = ["Accuracy", "F1 Score", "Precision", "Recall",
                    "MAE", "MSE", "NMAE", "RMSE",
                    "Reliability", "Consistency"]
-    
+
     # Display tables for each provider and task
     for provider in sorted(tasks_by_provider.keys()):
         for task in sorted(tasks_by_provider[provider]):
             # Create a table for this provider and task
             table = Table(title=f"[bold]{provider} - {task.capitalize()} Metrics by Reformulation Type[/bold]")
-            
+
             # Add metric column and reformulation type columns
             table.add_column("Metric", style="cyan")
             for reformulation_type in reformulation_types:
                 if provider in providers_by_reformulation.get(reformulation_type, set()):
                     table.add_column(reformulation_type, style="green")
-            
+
             # Calculate enhanced metrics for each reformulation type
             metrics_by_reformulation = {}
-            for combined_key, results in all_results.items():
+            for _combined_key, results in all_results.items():
                 reformulation_type = results.get("reformulation_type", "")
                 reformulation_display = reformulation_type if reformulation_type else "None"
-                
+
                 if provider in results["providers"]:
                     # Calculate enhanced metrics for this result
                     enhanced_metrics = calculate_additional_metrics(results)
                     if provider in enhanced_metrics and task in enhanced_metrics[provider]["tasks"]:
                         metrics_by_reformulation[reformulation_display] = enhanced_metrics[provider]["tasks"][task]
-            
+
             # Add rows for each metric
-            for metric_key, metric_name in zip(metric_keys, metric_names):
+            for metric_key, metric_name in zip(metric_keys, metric_names, strict=False):
                 row_data = [metric_name]
-                
+
                 for reformulation_type in reformulation_types:
                     if reformulation_type in metrics_by_reformulation:
                         metrics = metrics_by_reformulation[reformulation_type]
                         if metric_key in metrics:
                             value = metrics[metric_key]
                             std_key = f"{metric_key}_std"
-                            
+
                             if include_std and std_key in metrics:
                                 std_value = metrics[std_key]
                                 row_data.append(f"{value:.3f} (±{std_value:.3f})")
@@ -2404,9 +2399,9 @@ def display_combined_metrics_summary(all_results: Dict[str, Dict], include_std: 
                             row_data.append("-")
                     elif provider in providers_by_reformulation.get(reformulation_type, set()):
                         row_data.append("-")
-                
+
                 table.add_row(*row_data)
-            
+
             # Display the table
             console.print(table)
             console.print("\n")
@@ -2480,7 +2475,7 @@ def main():
         num_community_cards_list = []
         cards_per_player = []
         for _, ann_path in image_pairs:
-            with open(ann_path, 'r') as f:
+            with open(ann_path) as f:
                 data = json.load(f)
             players = data.get("players", [])
             num_players = len(players)
@@ -2595,7 +2590,7 @@ def main():
 
     # Add reformulation option
     reformulation = Prompt.ask(
-        f"Enter reformulation format if needed: 'declarative', 'missing_word', or 'both' (for both formats)",
+        "Enter reformulation format if needed: 'declarative', 'missing_word', or 'both' (for both formats)",
         default=""
     )
     reformulate=""
@@ -2614,7 +2609,7 @@ def main():
 
     # Load available pre-prompt options
     preprompt_json_path = "diagnostic/questions/preprompt.json"
-    with open(preprompt_json_path, "r") as f:
+    with open(preprompt_json_path) as f:
         preprompts = json.load(f)
     game_preprompts = preprompts.get(GAME_TYPE, {})
 
@@ -2622,13 +2617,13 @@ def main():
     console.print("[bold]Available pre-prompt options:[/bold]")
     for i, option in enumerate(game_preprompts.keys()):
         console.print(f"[{i}] {option}")
-    
+
     # Get user selection for pre-prompt
     pre_prompt_input = Prompt.ask(
         f"Enter pre-prompt option numbers (comma separated, or 'all' for all {len(game_preprompts.keys())} options)",
         default="0"  # Default to first option (likely 'helpful')
     )
-    
+
     selected_pre_prompt_keys = []
     if pre_prompt_input.lower() == "all":
         selected_pre_prompt_keys = list(game_preprompts.keys())
@@ -2641,28 +2636,28 @@ def main():
                     selected_pre_prompt_keys.append(pre_prompt_options[option_idx])
             except ValueError:
                 pass
-    
+
     if not selected_pre_prompt_keys:
         console.print("[bold red]Invalid input. Using 'helpful' pre-prompt.[/bold red]")
         if "helpful" in game_preprompts:
             selected_pre_prompt_keys = ["helpful"]
         else:
             selected_pre_prompt_keys = [list(game_preprompts.keys())[0]]  # First available option
-    
+
     # Get the pre-prompt strings for each selected key
     selected_pre_prompts = {key: game_preprompts.get(key, "") for key in selected_pre_prompt_keys}
-    
+
     # Check for any empty pre-prompts and just notify about them, don't treat as errors
     for key, prompt in selected_pre_prompts.items():
         if not prompt:
             console.print(f"[bold yellow]Note: Pre-prompt '{key}' for game '{GAME_TYPE}' is empty and will be used as a no-prompt option.[/bold yellow]")
-    
+
     # Don't filter out empty pre-prompts
     # selected_pre_prompts = {k: v for k, v in selected_pre_prompts.items() if v}
-    
+
     if not selected_pre_prompts:
         console.print("[bold red]No valid pre-prompts found. Proceeding without pre-prompts.[/bold red]")
-    
+
     # Summary of selections
     pre_prompt_summary = ", ".join(selected_pre_prompts.keys())
     console.print(Panel.fit(
@@ -2673,11 +2668,11 @@ def main():
         f"Pre-prompts: {pre_prompt_summary}\n"
         f"Images: {len(selected_images)} / {len(image_pairs)}"
     ))
-    
+
     if Confirm.ask("Proceed with evaluation?"):
         # Create a dictionary to store all results
         all_results = {}
-        
+
         # Process reformulation types
         reformulation_types = []
         if reformulate == "both":
@@ -2689,7 +2684,7 @@ def main():
             reformulation_types = [reformulate]
         else:
             reformulation_types = [""]  # No reformulation
-        
+
         # Run evaluation for each reformulation type and pre-prompt combination
         for reformulation_type in reformulation_types:
             for pre_prompt_key, pre_prompt in selected_pre_prompts.items():
@@ -2697,22 +2692,22 @@ def main():
                 combined_key = f"{pre_prompt_key}"
                 if reformulation_type:
                     combined_key = f"{reformulation_type}_{pre_prompt_key}"
-                
+
                 if reformulation_type:
                     console.print(f"\n[bold]Running evaluation with reformulation: {reformulation_type}, pre-prompt: {pre_prompt_key}[/bold]")
                 else:
                     console.print(f"\n[bold]Running evaluation with pre-prompt: {pre_prompt_key} (no reformulation)[/bold]")
-                    
+
                 result = run_evaluation(selected_images, selected_providers, selected_tasks, reformulation_type, pre_prompt, pre_prompt_key)
                 all_results[combined_key] = result
-        
+
         # Display combined metrics summary comparing different reformulation types
         console.print("\n[bold]Combined Metrics Summary (comparing reformulation types):[/bold]")
         display_combined_metrics_summary(all_results, include_std=True)
-        
+
         # Save combined results to a single CSV file across all reformulations and pre-prompts
         save_combined_results_to_csv(all_results, OUTPUT_DIR)
-        
+
     else:
         console.print("[yellow]Evaluation cancelled.[/yellow]")
 

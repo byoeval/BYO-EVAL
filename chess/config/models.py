@@ -1,18 +1,17 @@
 from dataclasses import dataclass, field
-from typing import Tuple, Union, Optional, Dict, Any, List, TypeVar
-
+from typing import Any, TypeVar, Union
 
 T = TypeVar('T')
 
 @dataclass
 class MaterialModel:
     """Configuration for material properties."""
-    color: Union[str, Tuple[float, float, float, float]] = "white"
+    color: str | tuple[float, float, float, float] = "white"
     roughness: float = 0.2
-    material_name: Optional[str] = None
-    custom_material: Optional[Any] = None  # For Blender material object
+    material_name: str | None = None
+    custom_material: Any | None = None  # For Blender material object
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert the config to a dictionary."""
         return {
             'color': self.color,
@@ -22,11 +21,11 @@ class MaterialModel:
         }
 
     @classmethod
-    def from_dict(cls, config: Dict[str, Any]) -> 'MaterialModel':
+    def from_dict(cls, config: dict[str, Any]) -> 'MaterialModel':
         """Create a MaterialModel from a dictionary."""
         if not isinstance(config, dict):
             config = {}
-            
+
         default_instance = cls()
         return cls(
             color=config.get('color', default_instance.color),
@@ -41,9 +40,9 @@ class GeometryModel:
     scale: float = 0.1
     random_rotation: bool = False
     max_rotation_angle: float = 15.0
-    seed: Optional[int] = None
+    seed: int | None = None
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert the config to a dictionary."""
         return {
             'scale': self.scale,
@@ -53,11 +52,11 @@ class GeometryModel:
         }
 
     @classmethod
-    def from_dict(cls, config: Dict[str, Any]) -> 'GeometryModel':
+    def from_dict(cls, config: dict[str, Any]) -> 'GeometryModel':
         """Create a GeometryModel from a dictionary."""
         if not isinstance(config, dict):
             config = {}
-            
+
         default_instance = cls()
         return cls(
             scale=config.get('scale', default_instance.scale),
@@ -70,11 +69,11 @@ class GeometryModel:
 class PieceModel:
     """Configuration for chess piece creation."""
     piece_type: str
-    location: Tuple[float, float, float] = (0, 0, 0)
+    location: tuple[float, float, float] = (0, 0, 0)
     material: MaterialModel = field(default_factory=MaterialModel)
     geometry: GeometryModel = field(default_factory=GeometryModel)
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert the config to a dictionary."""
         return {
             'type': self.piece_type,
@@ -84,17 +83,17 @@ class PieceModel:
         }
 
     @classmethod
-    def from_dict(cls, config: Dict[str, Any]) -> 'PieceModel':
+    def from_dict(cls, config: dict[str, Any]) -> 'PieceModel':
         """Create a PieceModel from a dictionary."""
         if not isinstance(config, dict):
             config = {}
-            
+
         default_instance = cls(piece_type=config.get('type', 'pawn'))  # piece_type is required but provide a default for complete default instance
-        
+
         # Handle nested models
         material_config = config.get('material', {}) if isinstance(config.get('material'), dict) else {}
         geometry_config = config.get('geometry', {}) if isinstance(config.get('geometry'), dict) else {}
-        
+
         return cls(
             piece_type=config.get('type', default_instance.piece_type),
             location=config.get('location', default_instance.location),
@@ -108,29 +107,29 @@ class BoardModel:
     length: float = 0.7
     width: float = 0.7
     thickness: float = 0.05
-    location: Tuple[float, float, float] = (0, 0, 0.9)
+    location: tuple[float, float, float] = (0, 0, 0.9)
     border_width: float = 0.2
     rows: int = 8
     columns: int = 8
     random_pattern: bool = False
-    pattern_seed: Optional[int] = None
-    board_material: Dict[str, Any] = field(default_factory=lambda: {
+    pattern_seed: int | None = None
+    board_material: dict[str, Any] = field(default_factory=lambda: {
         "color": (0.4, 0.2, 0.05, 1.0),  # Brown
         "roughness": 0.3,
         "material_name": "ChessboardMaterial"
     })
-    square_white_material: Dict[str, Any] = field(default_factory=lambda: {
+    square_white_material: dict[str, Any] = field(default_factory=lambda: {
         "color": (0.9, 0.9, 0.8, 1.0),  # Off-white
         "roughness": 0.2,
         "material_name": "WhiteSquareMaterial"
     })
-    square_black_material: Dict[str, Any] = field(default_factory=lambda: {
+    square_black_material: dict[str, Any] = field(default_factory=lambda: {
         "color": (0.1, 0.1, 0.1, 1.0),  # Off-black
         "roughness": 0.2,
         "material_name": "BlackSquareMaterial"
     })
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert the config to a dictionary."""
         return {
             'length': self.length,
@@ -148,11 +147,11 @@ class BoardModel:
         }
 
     @classmethod
-    def from_dict(cls, config: Dict[str, Any]) -> 'BoardModel':
+    def from_dict(cls, config: dict[str, Any]) -> 'BoardModel':
         """Create a BoardModel from a dictionary."""
         if not isinstance(config, dict):
             config = {}
-            
+
         default_instance = cls()
         return cls(
             length=config.get('length', default_instance.length),
@@ -172,10 +171,10 @@ class BoardModel:
     def get_material_model(self, material_type: str) -> MaterialModel:
         """
         Create a MaterialModel from the stored material configuration.
-        
+
         Args:
             material_type: One of 'board', 'white', or 'black'
-            
+
         Returns:
             MaterialModel instance
         """
@@ -184,10 +183,10 @@ class BoardModel:
             'white': self.square_white_material,
             'black': self.square_black_material
         }.get(material_type)
-        
+
         if material_config is None:
             raise ValueError(f"Invalid material type: {material_type}")
-            
+
         return MaterialModel.from_dict(material_config)
 
 @dataclass
@@ -195,9 +194,9 @@ class RandomizationRange:
     """Configuration for a range of random values."""
     min_value: float
     max_value: float
-    step: Optional[float] = None
+    step: float | None = None
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert the config to a dictionary."""
         return {
             'min_value': self.min_value,
@@ -206,11 +205,11 @@ class RandomizationRange:
         }
 
     @classmethod
-    def from_dict(cls, config: Dict[str, Any]) -> 'RandomizationRange':
+    def from_dict(cls, config: dict[str, Any]) -> 'RandomizationRange':
         """Create a RandomizationRange from a dictionary."""
         if not isinstance(config, dict):
             config = {}
-            
+
         default_instance = cls(min_value=0.0, max_value=1.0)  # Provide default values for required fields
         return cls(
             min_value=config.get('min_value', default_instance.min_value),
@@ -223,10 +222,10 @@ class PieceCountRange:
     """Configuration for piece count ranges."""
     min_count: int = 0
     max_count: int = 8
-    total_min: Optional[int] = None
-    total_max: Optional[int] = None
+    total_min: int | None = None
+    total_max: int | None = None
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert the config to a dictionary."""
         return {
             'min_count': self.min_count,
@@ -236,11 +235,11 @@ class PieceCountRange:
         }
 
     @classmethod
-    def from_dict(cls, config: Dict[str, Any]) -> 'PieceCountRange':
+    def from_dict(cls, config: dict[str, Any]) -> 'PieceCountRange':
         """Create a PieceCountRange from a dictionary."""
         if not isinstance(config, dict):
             config = {}
-            
+
         default_instance = cls()
         return cls(
             min_count=config.get('min_count', default_instance.min_count),
@@ -252,18 +251,18 @@ class PieceCountRange:
 @dataclass
 class BoardRandomizationModel:
     """Configuration for board randomization."""
-    location_bounds: Tuple[RandomizationRange, RandomizationRange] = field(
+    location_bounds: tuple[RandomizationRange, RandomizationRange] = field(
         default_factory=lambda: (
             RandomizationRange(-0.4, 0.4),  # x
             RandomizationRange(-0.4, 0.4)   # y
         )
     )
     pattern_randomization: bool = False
-    pattern_seed: Optional[int] = None
+    pattern_seed: int | None = None
     rows: int = 8
     columns: int = 8
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert the config to a dictionary."""
         return {
             'location_bounds': [bound.to_dict() for bound in self.location_bounds],
@@ -274,20 +273,20 @@ class BoardRandomizationModel:
         }
 
     @classmethod
-    def from_dict(cls, config: Union[Dict[str, Any], 'BoardRandomizationModel']) -> 'BoardRandomizationModel':
+    def from_dict(cls, config: Union[dict[str, Any], 'BoardRandomizationModel']) -> 'BoardRandomizationModel':
         """
         Create a BoardRandomizationModel from a dictionary or another BoardRandomizationModel.
-        
+
         Args:
             config: Either a dictionary or a BoardRandomizationModel object
-            
+
         Returns:
             BoardRandomizationModel object
         """
         # If config is already a BoardRandomizationModel, return it
         if isinstance(config, BoardRandomizationModel):
             return config
-            
+
         # Handle dictionary input
         location_bounds = config.get('location_bounds', [])
         if isinstance(location_bounds, list) and len(location_bounds) == 2:
@@ -306,7 +305,7 @@ class BoardRandomizationModel:
 @dataclass
 class PieceRandomizationModel:
     """Configuration for piece randomization."""
-    piece_counts: Dict[str, PieceCountRange] = field(default_factory=lambda: {
+    piece_counts: dict[str, PieceCountRange] = field(default_factory=lambda: {
         "pawn": PieceCountRange(0, 8),
         "rook": PieceCountRange(0, 2),
         "knight": PieceCountRange(0, 2),
@@ -317,13 +316,13 @@ class PieceRandomizationModel:
     scale_range: RandomizationRange = field(
         default_factory=lambda: RandomizationRange(0.05, 0.12, 0.01)
     )
-    allowed_colors: List[Union[str, Tuple[float, float, float, float]]] = field(
+    allowed_colors: list[str | tuple[float, float, float, float]] = field(
         default_factory=lambda: ["white", "black"]
     )
     intra_class_variation: bool = False
     extra_class_variation: bool = False
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert the config to a dictionary."""
         return {
             'piece_counts': {k: v.to_dict() for k, v in self.piece_counts.items()},
@@ -334,20 +333,20 @@ class PieceRandomizationModel:
         }
 
     @classmethod
-    def from_dict(cls, config: Dict[str, Any]) -> 'PieceRandomizationModel':
+    def from_dict(cls, config: dict[str, Any]) -> 'PieceRandomizationModel':
         """Create a PieceRandomizationModel from a dictionary."""
         if not isinstance(config, dict):
             config = {}
-            
+
         default_instance = cls()
-        
+
         piece_counts = {
             k: PieceCountRange.from_dict(v) if isinstance(v, dict) else v
             for k, v in config.get('piece_counts', default_instance.piece_counts).items()
         }
-        
-        scale_range = (RandomizationRange.from_dict(config['scale_range']) 
-                      if isinstance(config.get('scale_range'), dict) 
+
+        scale_range = (RandomizationRange.from_dict(config['scale_range'])
+                      if isinstance(config.get('scale_range'), dict)
                       else default_instance.scale_range)
 
         return cls(
@@ -365,7 +364,7 @@ class DifficultyPreset:
     board_config: BoardRandomizationModel
     piece_config: PieceRandomizationModel
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert the preset to a dictionary."""
         return {
             'name': self.name,
@@ -374,7 +373,7 @@ class DifficultyPreset:
         }
 
     @classmethod
-    def from_dict(cls, config: Dict[str, Any]) -> 'DifficultyPreset':
+    def from_dict(cls, config: dict[str, Any]) -> 'DifficultyPreset':
         """Create a DifficultyPreset from a dictionary."""
         return cls(
             name=config['name'],
@@ -392,7 +391,7 @@ class PieceCountConfig:
     queen: int
     king: int
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert the config to a dictionary."""
         return {
             'pawn': self.pawn,
@@ -404,11 +403,11 @@ class PieceCountConfig:
         }
 
     @classmethod
-    def from_dict(cls, config: Dict[str, Any]) -> 'PieceCountConfig':
+    def from_dict(cls, config: dict[str, Any]) -> 'PieceCountConfig':
         """Create a PieceCountConfig from a dictionary."""
         if not isinstance(config, dict):
             config = {}
-            
+
         default_instance = cls()
         return cls(
             pawn=config.get('pawn', default_instance.pawn),
@@ -417,4 +416,4 @@ class PieceCountConfig:
             bishop=config.get('bishop', default_instance.bishop),
             queen=config.get('queen', default_instance.queen),
             king=config.get('king', default_instance.king)
-        ) 
+        )

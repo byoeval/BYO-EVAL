@@ -1,12 +1,13 @@
 # poker/chip_dealer.py
 
-import random
-from typing import List, Dict, Optional, Any
 import logging
 
 # Ensure workspace root is in path for sibling imports
 import os
+import random
 import sys
+from typing import Any
+
 workspace_root_dealer = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
 if workspace_root_dealer not in sys.path:
     sys.path.append(workspace_root_dealer)
@@ -16,13 +17,13 @@ from poker.config.models import ChipDistributionInput
 
 logger = logging.getLogger(__name__)
 
-def _distribute_randomly(total_items: int, num_bins: int, rng: random.Random) -> List[int]:
+def _distribute_randomly(total_items: int, num_bins: int, rng: random.Random) -> list[int]:
     """Distributes a total number of items randomly into bins using multinomial logic."""
     if num_bins <= 0:
         return []
     if total_items <= 0:
         return [0] * num_bins
-        
+
     # Simple approach: Assign one by one randomly
     counts = [0] * num_bins
     for _ in range(total_items):
@@ -32,10 +33,10 @@ def _distribute_randomly(total_items: int, num_bins: int, rng: random.Random) ->
 
 
 def deal_chip_piles(
-    chip_distribution_inputs: Optional[Dict[str, Any]], # Raw dict like {"overall_piles": 10}
+    chip_distribution_inputs: dict[str, Any] | None, # Raw dict like {"overall_piles": 10}
     num_players: int,
-    random_seed: Optional[int] = None
-) -> List[int]:
+    random_seed: int | None = None
+) -> list[int]:
     """
     Resolves chip *pile* counts for each player based on distribution inputs.
 
@@ -84,18 +85,18 @@ def deal_chip_piles(
         if max_player_piles is not None and (not isinstance(max_player_piles, int) or max_player_piles < 0):
             logger.warning(f"Invalid max_piles_per_player ({max_player_piles}), ignoring it.")
             max_player_piles = None
-        
+
         # Ensure max is not less than min if both are specified
         if max_player_piles is not None and min_player_piles > max_player_piles:
              logger.warning(f"min_piles_per_player ({min_player_piles}) > max_piles_per_player ({max_player_piles}). Ignoring max constraint.")
              max_player_piles = None
-        
+
         logger.debug(f"Constraints: min_piles={min_player_piles}, max_piles={max_player_piles}")
 
         # --- Distribution with min and max constraints ---
         player_pile_counts = [min_player_piles] * num_players
         piles_assigned_so_far = sum(player_pile_counts)
-        
+
         if piles_assigned_so_far > overall_piles:
             logger.warning(f"Minimum player piles total ({piles_assigned_so_far}) exceeds overall_piles ({overall_piles}). Distributing overall piles randomly, ignoring minimum and maximum.")
             # Fallback to simple random distribution if minimums already exceed total
@@ -103,7 +104,7 @@ def deal_chip_piles(
         else:
             remaining_piles_to_assign = overall_piles - piles_assigned_so_far
             logger.debug(f"Assigning minimums first ({piles_assigned_so_far} piles). Distributing remaining {remaining_piles_to_assign} piles iteratively with max constraint.")
-            
+
             for _ in range(remaining_piles_to_assign):
                 # Find players eligible to receive another pile (below max, if max is set)
                 eligible_player_indices = [
@@ -118,7 +119,7 @@ def deal_chip_piles(
                 # Choose a random eligible player and give them a pile
                 chosen_player_index = rng.choice(eligible_player_indices)
                 player_pile_counts[chosen_player_index] += 1
-            
+
             piles_actually_assigned = sum(player_pile_counts)
             if piles_actually_assigned != overall_piles and not eligible_player_indices: # Check if loop broke early
                 logger.info(f"Final assigned piles ({piles_actually_assigned}) differs from requested overall_piles ({overall_piles}) due to max_piles_per_player constraint.")
@@ -135,7 +136,7 @@ def deal_chip_piles(
         if isinstance(inputs.piles_per_player, list):
             if len(inputs.piles_per_player) == num_players:
                 valid_counts = [c if isinstance(c, int) and c >= 0 else 0 for c in inputs.piles_per_player]
-                if any(c == 0 and oc != 0 for c, oc in zip(valid_counts, inputs.piles_per_player)): logger.warning(f"Invalid counts in piles_per_player list {inputs.piles_per_player}, invalid set to 0.")
+                if any(c == 0 and oc != 0 for c, oc in zip(valid_counts, inputs.piles_per_player, strict=False)): logger.warning(f"Invalid counts in piles_per_player list {inputs.piles_per_player}, invalid set to 0.")
                 player_pile_counts = valid_counts
             else:
                 logger.warning(f"piles_per_player list length ({len(inputs.piles_per_player)}) != num_players ({num_players}). Ignoring list.")
@@ -157,4 +158,4 @@ def deal_chip_piles(
     player_pile_counts = [max(0, c) for c in player_pile_counts]
     logger.info(f"Resolved chip pile counts per player: {player_pile_counts}")
 
-    return player_pile_counts 
+    return player_pile_counts

@@ -1,23 +1,24 @@
 # poker/card_dealer.py
 
-import random
-from typing import List, Dict, Optional, Any
 import logging
 
 # Ensure workspace root is in path for sibling imports
 # (This might be needed if this module is run standalone or imported differently)
 import os
+import random
 import sys
-workspace_root_dealer = os.path.abspath(os.path.join(os.path.dirname(__file__), '..')) 
+from typing import Any
+
+workspace_root_dealer = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
 if workspace_root_dealer not in sys.path:
     sys.path.append(workspace_root_dealer)
-    
+
 # Use CardDistributionInput to type hint the raw config dict
-from poker.config.models import CardDistributionInput, DEFAULT_CARD_NAMES
+from poker.config.models import DEFAULT_CARD_NAMES, CardDistributionInput
 
 logger = logging.getLogger(__name__)
 
-def _distribute_randomly(num_items: int, num_bins: int, rng: random.Random) -> List[int]:
+def _distribute_randomly(num_items: int, num_bins: int, rng: random.Random) -> list[int]:
     """Distributes num_items randomly into num_bins, ensuring non-negative counts."""
     if num_bins <= 0:
         if num_items > 0:
@@ -26,28 +27,28 @@ def _distribute_randomly(num_items: int, num_bins: int, rng: random.Random) -> L
     if num_items < 0:
         logger.warning(f"Cannot distribute negative items ({num_items}). Returning zeros.")
         return [0] * num_bins
-        
+
     # Generate num_bins - 1 random split points between 0 and num_items (inclusive)
     split_points = sorted([rng.randint(0, num_items) for _ in range(num_bins - 1)])
-    
+
     counts = []
     last_point = 0
     for point in split_points:
         counts.append(point - last_point)
         last_point = point
     counts.append(num_items - last_point) # Add the last segment
-    
+
     return counts
 
 def deal_cards(
-    distribution_inputs: Optional[Dict[str, Any]], # Raw dict like {"river_cards": 3, "player_cards": 2}
+    distribution_inputs: dict[str, Any] | None, # Raw dict like {"river_cards": 3, "player_cards": 2}
     num_players: int, # The actual number of players being generated/used
-    deck: List[str] = DEFAULT_CARD_NAMES,
-    random_seed: Optional[int] = None,
+    deck: list[str] = DEFAULT_CARD_NAMES,
+    random_seed: int | None = None,
     allow_repetition: bool = True # NEW flag
-) -> Dict[str, List[List[str]]]: # Changed return type slightly
+) -> dict[str, list[list[str]]]: # Changed return type slightly
     """
-    Resolves card counts from inputs, shuffles a deck (if no repetition), 
+    Resolves card counts from inputs, shuffles a deck (if no repetition),
     and deals cards (sequentially or with replacement). Enforces maximum counts.
 
     Args:
@@ -70,12 +71,12 @@ def deal_cards(
                                      # card names for a player.
         }
         Returns empty lists if dealing fails (e.g., not enough cards).
-        
+
     Raises:
         ValueError: If the total number of cards required exceeds the deck size
         when repetition is not allowed. Or if inputs are invalid.
     """
-    # --- Resolve Card Counts from Inputs --- 
+    # --- Resolve Card Counts from Inputs ---
     if distribution_inputs is None:
         logger.warning("No card distribution inputs provided. Returning empty deal.")
         return {'river': [], 'players': [[] for _ in range(num_players)]}
@@ -84,7 +85,7 @@ def deal_cards(
     try:
         inputs = CardDistributionInput(**distribution_inputs)
         # Set the actual number of players based on the scene context
-        inputs.n_players = num_players 
+        inputs.n_players = num_players
         # Basic validation on min_cards_per_player
         if inputs.min_cards_per_player is not None and (not isinstance(inputs.min_cards_per_player, int) or inputs.min_cards_per_player < 0):
             logger.warning(f"Invalid min_cards_per_player ({inputs.min_cards_per_player}), ignoring it.")
@@ -98,7 +99,7 @@ def deal_cards(
             inputs.max_river_cards = None
     except TypeError as e:
         raise ValueError(f"Invalid structure in card_distribution_inputs: {e}")
-        
+
     # Get max limits (use None if not set, indicating no limit)
     max_p_cards = inputs.max_player_cards
     max_r_cards = inputs.max_river_cards
@@ -126,7 +127,7 @@ def deal_cards(
         if isinstance(inputs.river_cards, int) and inputs.river_cards >= 0:
             logger.debug(f"Handling 'overall_cards' + 'river_cards' ({inputs.river_cards})")
             requested_river = inputs.river_cards
-            
+
             # Apply max river card limit
             if max_r_cards is not None and requested_river > max_r_cards:
                 logger.warning(f"Requested river_cards ({requested_river}) exceeds max_river_cards ({max_r_cards}). Capping at {max_r_cards}.")
@@ -151,7 +152,7 @@ def deal_cards(
             if inputs.player_cards is not None: logger.warning("'overall_cards' and 'river_cards' are set, ignoring 'player_cards'.")
             if inputs.min_cards_per_player is not None: logger.warning("'overall_cards' and 'river_cards' are set, ignoring 'min_cards_per_player'.")
 
-        # --- Case: overall + min_cards_per_player specified --- 
+        # --- Case: overall + min_cards_per_player specified ---
         elif inputs.min_cards_per_player is not None:
             logger.debug(f"Handling 'overall_cards' + 'min_cards_per_player' ({min_player_cards})")
             if min_player_total > overall_cards:
@@ -161,7 +162,7 @@ def deal_cards(
             else:
                 player_counts = [min_player_cards] * num_players # Start with minimum (already capped)
                 remaining_overall = overall_cards - min_player_total
-                
+
                 # Randomly assign remaining cards between river and extra player cards
                 # Ensure river doesn't exceed max_river_cards
                 potential_river = rng.randint(0, remaining_overall)
@@ -170,7 +171,7 @@ def deal_cards(
                     river_count = max_r_cards
                 else:
                     river_count = potential_river
-                
+
                 extra_player_cards = remaining_overall - river_count # Cards remaining after river allocation
                 logger.debug(f"Assigned {river_count} to river, {extra_player_cards} extra for players.")
 
@@ -183,7 +184,7 @@ def deal_cards(
             if inputs.player_cards is not None: logger.warning("'overall_cards' and 'min_cards_per_player' are set, ignoring 'player_cards'.")
             if inputs.river_cards is not None: logger.warning("'overall_cards' and 'min_cards_per_player' are set, ignoring 'river_cards'.")
 
-        # --- Case: overall only specified --- 
+        # --- Case: overall only specified ---
         else:
             logger.debug("Handling 'overall_cards' only.")
             # Distribute overall_cards randomly between river and players
@@ -203,21 +204,21 @@ def deal_cards(
                 player_counts = _distribute_randomly(remaining_for_players, num_players, rng)
             elif remaining_for_players > 0:
                 logger.warning(f"Have {remaining_for_players} cards left, but num_players is 0.")
-                
+
             # Warn if other specs were ignored
             if inputs.player_cards is not None: logger.warning("'overall_cards' is set, ignoring 'player_cards'.")
             if inputs.river_cards is not None: logger.warning("'overall_cards' is set, ignoring 'river_cards'.")
             if inputs.min_cards_per_player is not None: logger.warning("'overall_cards' is set, ignoring 'min_cards_per_player'.")
 
     # == Fallback Branch: overall_cards NOT specified ==
-    else: 
+    else:
         if inputs.overall_cards is not None: logger.warning(f"Invalid overall_cards value '{inputs.overall_cards}', ignoring it.")
         logger.debug("Resolving counts using river/player specific inputs.")
         # Use explicit river_cards if provided, respecting max_river_cards
         requested_river = inputs.river_cards if isinstance(inputs.river_cards, int) and inputs.river_cards >= 0 else 0
-        if inputs.river_cards is not None and requested_river == 0 and inputs.river_cards != 0: 
+        if inputs.river_cards is not None and requested_river == 0 and inputs.river_cards != 0:
             logger.warning(f"Invalid river_cards value '{inputs.river_cards}', resolving to 0.")
-        
+
         if max_r_cards is not None and requested_river > max_r_cards:
             logger.warning(f"Requested river_cards ({requested_river}) exceeds max_river_cards ({max_r_cards}). Capping at {max_r_cards}.")
             river_count = max_r_cards
@@ -278,7 +279,7 @@ def deal_cards(
 
     logger.debug(f"Final resolved card counts (after potential capping): river={river_count}, players={player_counts}")
     # --- End Count Resolution ---
-        
+
     total_cards_needed = river_count + sum(player_counts)
 
     # Only check deck size and shuffle if repetition is NOT allowed
@@ -294,16 +295,16 @@ def deal_cards(
         logger.debug(f"Shuffling deck (repetition=False) with seed: {random_seed}")
         random.Random(random_seed).shuffle(shuffled_deck)
     # else: If repetition allowed, we don't need to shuffle or check size
-    
+
     # Initialize RNG for card choices if repetition is allowed
     rng_choice = random.Random(random_seed)
 
     # Deal cards
-    dealt_cards: Dict[str, List[List[str]]] = {
+    dealt_cards: dict[str, list[list[str]]] = {
         'river': [],
         'players': [[] for _ in range(num_players)]
     }
-    
+
     card_index = 0 # Only used if allow_repetition is False
 
     # Deal river cards
@@ -330,9 +331,9 @@ def deal_cards(
             logger.debug(f"Dealt {num_player_cards} cards to player {i}: {dealt_cards['players'][i]}")
         else:
             logger.debug(f"Player {i} receives 0 cards.")
-            
+
     total_dealt = river_count + sum(p_count for p_count in player_counts)
     logger.info(f"Finished dealing cards. Total dealt/assigned: {total_dealt}")
 
     print("OVERALL DEALT CARDS: ", dealt_cards)
-    return dealt_cards 
+    return dealt_cards

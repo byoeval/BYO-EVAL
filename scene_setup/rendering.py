@@ -1,7 +1,10 @@
+from typing import Any
+
 import bpy
+
 from scene_setup.models import RenderModel
 from utils.blender_utils import enable_gpu_rendering
-from typing import Dict, Any
+
 
 def clear_scene():
     """Remove all objects and orphaned data blocks from the scene."""
@@ -54,13 +57,13 @@ def clear_scene():
                 bpy.data.actions.remove(block)
 
 
-def setup_render(config: Dict[str, Any]):
+def setup_render(config: dict[str, Any]):
     """
     Setup the render settings from a RenderModel or configuration dictionary.
 
     Args:
         config: Either a RenderModel object or a dictionary with render configuration:
-               - resolution: ResolutionModel, dict, string preset ("low", "medium", "high"), 
+               - resolution: ResolutionModel, dict, string preset ("low", "medium", "high"),
                             or tuple of (width, height)
                - file_format: The file format of the render (default: "PNG")
                - engine: The engine of the render (default: "CYCLES")
@@ -70,13 +73,13 @@ def setup_render(config: Dict[str, Any]):
                - gpus: Which GPUs to use for rendering (None for all)
     """
     scene = bpy.context.scene
-    
+
     # Convert config to RenderModel if it's a dictionary
     render_model = RenderModel.from_dict(config)
-    
+
     # Get resolution from the render model
     resolution_model = render_model.resolution
-    
+
     # Set render settings from the model
     scene.render.image_settings.file_format = render_model.file_format
     scene.render.resolution_x = resolution_model.width
@@ -87,25 +90,25 @@ def setup_render(config: Dict[str, Any]):
     scene.render.engine = render_model.engine
     scene.cycles.samples = render_model.samples
     scene.view_settings.exposure = render_model.exposure
-    
+
     # Enable GPU rendering if requested
     if render_model.gpu_enabled:
         enable_gpu_rendering(gpus=render_model.gpus)
 
 
-def setup_render_from_config(config: Dict[str, Any]):
+def setup_render_from_config(config: dict[str, Any]):
     """
     Setup the render settings from a configuration dictionary.
 
     Args:
         config: A dictionary with render configuration:
-               - resolution: ResolutionModel, dict, string preset ("low", "medium", "high"), 
+               - resolution: ResolutionModel, dict, string preset ("low", "medium", "high"),
                             or tuple of (width, height)
                - file_format: The file format of the render (default: "PNG")
                - engine: The engine of the render (default: "CYCLES")
-               - samples: The number of samples of the render (default: 128)    
+               - samples: The number of samples of the render (default: 128)
     """
-    
+
     # Set up the render
     setup_render(config)
 

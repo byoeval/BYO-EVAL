@@ -1,4 +1,4 @@
-from typing import List, Dict, Any, Union
+from typing import Any
 
 
 class AnswerExtractor:
@@ -6,9 +6,8 @@ class AnswerExtractor:
 
     def __init__(self):
         '''Initializes the AnswerExtractor.'''
-        pass
 
-    def extract_answer(self, data: Dict[str, Any], question_key: str, game_type: str, question:str=None) -> Union[str, List[str], Dict[str, Any], None]:
+    def extract_answer(self, data: dict[str, Any], question_key: str, game_type: str, question:str=None) -> str | list[str] | dict[str, Any] | None:
         '''
         Extracts an answer from the provided data based on the question key and game type.
 
@@ -35,7 +34,7 @@ class AnswerExtractor:
 
             if question_key == "count_pieces":
                 return str(num_pieces)
-            
+
             elif question_key == "count_squares":
                 board = data.get('board', {})
                 rows = board.get('dimensions', {}).get('rows', 0)
@@ -46,7 +45,7 @@ class AnswerExtractor:
                 if num_pieces == 1 and first_piece:
                     return str(first_piece.get('board_position', [0, 0])[0])
                 return None
-            
+
             elif question_key == "localize_row_one_piece":
                 if num_pieces == 1 and first_piece:
                     return str(first_piece.get('board_position', [0, 0])[1])
@@ -61,15 +60,15 @@ class AnswerExtractor:
                 if num_pieces == 2 and piece_positions[0] and piece_positions[1]:
                     return str(abs(piece_positions[0][0] - piece_positions[1][0]))
                 return None
-            
+
             elif question_key == "localize_row_closest_piece":
                 if num_pieces > 1:
-                    closest_rows: List[str] = []
+                    closest_rows: list[str] = []
                     piece_values = list(pieces.values())
                     for i, piece in enumerate(piece_values):
                         current_pos = piece.get('board_position')
                         if not current_pos: continue
-                        
+
                         other_pieces_list = piece_values[:i] + piece_values[i+1:]
                         if not other_pieces_list: continue
 
@@ -82,7 +81,7 @@ class AnswerExtractor:
 
             elif question_key == "localize_column_closest_piece":
                 if num_pieces > 1:
-                    closest_cols: List[str] = []
+                    closest_cols: list[str] = []
                     piece_values = list(pieces.values())
                     for i, piece in enumerate(piece_values):
                         current_pos = piece.get('board_position')
@@ -90,7 +89,7 @@ class AnswerExtractor:
 
                         other_pieces_list = piece_values[:i] + piece_values[i+1:]
                         if not other_pieces_list: continue
-                        
+
                         closest_p = min(other_pieces_list, key=lambda p:
                             abs(p.get('board_position', [float('inf'), float('inf')])[0] - current_pos[0]) +
                             abs(p.get('board_position', [float('inf'), float('inf')])[1] - current_pos[1]))
@@ -107,7 +106,7 @@ class AnswerExtractor:
                 if num_pieces == 1 and first_piece:
                     return first_piece.get('type', '').lower()
                 return None
-            
+
             elif question_key == "identify_type_several_pieces":
                 if num_pieces > 0:
                     return [p.get('type', '').lower() for p in pieces.values() if p.get('type')]
@@ -116,7 +115,7 @@ class AnswerExtractor:
             elif question_key == "count_localization_pieces_on_row":
                 board = data.get('board', {})
                 rows = board.get('dimensions', {}).get('rows', 0)
-                counts_per_row: Dict[str, int] = {}
+                counts_per_row: dict[str, int] = {}
                 for row_id in range(rows):
                     count = sum(1 for piece in pieces.values()
                                 if piece.get('board_position', [-1, -1])[1] == row_id)
@@ -127,7 +126,7 @@ class AnswerExtractor:
             elif question_key == "count_localization_pieces_on_column":
                 board = data.get('board', {})
                 columns = board.get('dimensions', {}).get('columns', 0)
-                counts_per_col: Dict[str, int] = {}
+                counts_per_col: dict[str, int] = {}
                 for col_id in range(columns):
                     count = sum(1 for piece in pieces.values()
                                 if piece.get('board_position', [-1, -1])[0] == col_id)
@@ -152,20 +151,20 @@ class AnswerExtractor:
                     match = re.search(r"how many (\w+) pieces", question.lower())
                     if match:
                         piece_type = match.group(1).lower()
-                        return str(sum(1 for piece in pieces.values() 
+                        return str(sum(1 for piece in pieces.values()
                                     if piece.get('type', '').lower() == piece_type))
-                
+
                 # Fall back to returning counts per piece type if no specific type in question
-                counts: Dict[str, int] = {}
+                counts: dict[str, int] = {}
                 for piece in pieces.values():
                     p_type = piece.get('type', '').lower()
                     if p_type:
                         counts[p_type] = counts.get(p_type, 0) + 1
                 return counts if counts else None
-            
+
             elif question_key == "identify_localization_piece_color":
-                colors_at_pos: Dict[str, str] = {}
-                for piece_key, piece_value in pieces.items():
+                colors_at_pos: dict[str, str] = {}
+                for _piece_key, piece_value in pieces.items():
                     pos = piece_value.get('board_position')
                     color = piece_value.get('color', '').lower()
                     if pos and color:
@@ -173,8 +172,8 @@ class AnswerExtractor:
                 return colors_at_pos if colors_at_pos else None
 
             elif question_key == "identify_localization_piece_type":
-                types_at_pos: Dict[str, str] = {}
-                for piece_key, piece_value in pieces.items():
+                types_at_pos: dict[str, str] = {}
+                for _piece_key, piece_value in pieces.items():
                     pos = piece_value.get('board_position')
                     p_type = piece_value.get('type', '').lower()
                     if pos and p_type:
@@ -184,9 +183,9 @@ class AnswerExtractor:
             elif question_key == "count_localization_pieces_row":
                 board = data.get('board', {})
                 rows = board.get('dimensions', {}).get('rows', 0)
-                counts: Dict[str, Dict[str, int]] = {}
+                counts: dict[str, dict[str, int]] = {}
                 for row_id in range(rows):
-                    types_in_row: Dict[str, int] = {}
+                    types_in_row: dict[str, int] = {}
                     for piece in pieces.values():
                         if piece.get('board_position', [-1,-1])[1] == row_id:
                             p_type = piece.get('type', '').lower()
@@ -199,9 +198,9 @@ class AnswerExtractor:
             elif question_key == "count_localization_pieces_column":
                 board = data.get('board', {})
                 columns = board.get('dimensions', {}).get('columns', 0)
-                counts: Dict[str, Dict[str, int]] = {}
+                counts: dict[str, dict[str, int]] = {}
                 for col_id in range(columns):
-                    types_in_col: Dict[str, int] = {}
+                    types_in_col: dict[str, int] = {}
                     for piece in pieces.values():
                         if piece.get('board_position', [-1,-1])[0] == col_id:
                             p_type = piece.get('type', '').lower()
@@ -214,7 +213,7 @@ class AnswerExtractor:
             elif question_key == "count_identification_localization_white_pieces_row":
                 board = data.get('board', {})
                 rows = board.get('dimensions', {}).get('rows', 0)
-                counts_per_row: Dict[str, int] = {}
+                counts_per_row: dict[str, int] = {}
                 for row_id in range(rows):
                     count = sum(1 for piece in pieces.values()
                                 if piece.get('color', '').lower() == 'white' and \
@@ -226,7 +225,7 @@ class AnswerExtractor:
             elif question_key == "count_identification_localization_black_pieces_column":
                 board = data.get('board', {})
                 columns = board.get('dimensions', {}).get('columns', 0)
-                counts_per_col: Dict[str, int] = {}
+                counts_per_col: dict[str, int] = {}
                 for col_id in range(columns):
                     count = sum(1 for piece in pieces.values()
                                 if piece.get('color', '').lower() == 'white' and \
@@ -234,14 +233,14 @@ class AnswerExtractor:
                     if count > 0:
                         counts_per_col[str(col_id)] = count
                 return counts_per_col if counts_per_col else None
-            
+
             else:
                 return None
 
         elif game_type == "poker":
             players = data.get("players", [])
             community = data.get("community_cards", {})
-            card_overlap = data.get("card_overlap_layout", None)
+            card_overlap = data.get("card_overlap_layout")
 
             if question_key == "count_total_cards" or question_key == "count_cards_overlap":
                 n_community = community.get("n_cards", 0) if community else 0
@@ -249,10 +248,7 @@ class AnswerExtractor:
                 n_overlap_cards = card_overlap.get("overall_cards", 0) if card_overlap else 0
                 return str(n_community + n_player_cards + n_overlap_cards)
 
-            elif question_key == "count_table_chip_piles":
-                return None
-
-            elif question_key == "count_chip_piles_per_player":
+            elif question_key == "count_table_chip_piles" or question_key == "count_chip_piles_per_player":
                 return None
 
             elif question_key == "count_players":
@@ -265,10 +261,7 @@ class AnswerExtractor:
             elif question_key == "count_community_cards":
                 return str(community.get("n_cards", 0))
 
-            elif question_key == "identify_cards":
-                return community.get("card_names", [])
-
-            elif question_key == "identify_community_cards":
+            elif question_key == "identify_cards" or question_key == "identify_community_cards":
                 return community.get("card_names", [])
 
             elif question_key == "count_identify_face_up_cards":
@@ -277,7 +270,7 @@ class AnswerExtractor:
 
             elif question_key == "count_identify_face_down_cards":
                 return str(community.get("n_verso", 0))
-            
+
             elif question_key == "identify_most_cards_player":
                 if not players: return None
                 max_cards = -1
@@ -288,7 +281,7 @@ class AnswerExtractor:
                         max_cards = n_cards
                         max_player_id = player.get("player_id", "Unknown")
                 return str(max_player_id) if max_player_id is not None else None
-            
+
             elif question_key == "count_identification_color_cards":
                 # Extract the suit/color from the question
                 if question:
@@ -299,14 +292,14 @@ class AnswerExtractor:
                         # Map full suit name to its single letter code
                         suit_map = {"Hearts": "H", "Diamonds": "D", "Clubs": "C", "Spades": "S"}
                         suit_code = suit_map.get(target_suit, "")
-                        
+
                         # Count cards with this suit in community cards
                         if suit_code:
                             card_names = community.get("card_names", [])
                             count = sum(1 for card in card_names if card and card[-1] == suit_code)
                             return str(count)
                 return "0"  # Default to 0 if no match
-            
+
             elif question_key == "count_identification_rank_cards":
                 # Extract the rank from the question
                 if question:
@@ -314,13 +307,13 @@ class AnswerExtractor:
                     match = re.search(r"how many (\w+|\d+) cards", question.lower())
                     if match:
                         target_rank = match.group(1).upper()
-                        
+
                         # Count cards with this rank in community cards
                         card_names = community.get("card_names", [])
                         count = sum(1 for card in card_names if card and card[:-1] == target_rank)
                         return str(count)
                 return "0"  # Default to 0 if no match
-            
+
             elif question_key == "count_identification_type_cards":
                 # Extract the card type from the question (Ace, King, etc.)
                 if question:
@@ -328,28 +321,28 @@ class AnswerExtractor:
                     match = re.search(r"how many (ace|king|queen|jack|\d+) cards", question.lower())
                     if match:
                         target_type = match.group(1).lower()
-                        
+
                         # Map card type names to their codes
                         type_map = {"ace": "A", "king": "K", "queen": "Q", "jack": "J", "10": "T"}
                         type_code = type_map.get(target_type, target_type)
-                        
+
                         # Count cards with this type in community cards
                         card_names = community.get("card_names", [])
                         count = sum(1 for card in card_names if card and card[0] == type_code)
                         return str(count)
                 return "0"  # Default to 0 if no match
-            
-            elif question_key in ["localize_card_on_grid_row", "localize_card_on_grid_column", 
+
+            elif question_key in ["localize_card_on_grid_row", "localize_card_on_grid_column",
                                  "localize_card_on_grid_number", "localize_card_on_grid_3x3"]:
                 # These questions apply to images with a single card
-                
+
                 # Look for card in card_grid_locations
                 card_grid_locations = data.get("card_grid_locations", {})
-                
+
                 # Find the card's grid location - for images with a single card
                 grid_info = None
                 card_id = None
-                
+
                 # First try card_grid_locations
                 if card_grid_locations:
                     if len(card_grid_locations) == 1:
@@ -360,7 +353,7 @@ class AnswerExtractor:
                         # Multiple cards in grid_locations, use the first one
                         card_id = next(iter(card_grid_locations.keys()))
                         grid_info = card_grid_locations[card_id]
-                
+
                 # If not found in card_grid_locations, check players
                 if not grid_info:
                     for player in players:
@@ -376,46 +369,46 @@ class AnswerExtractor:
                                 card_id = next(iter(player_grid_locations.keys()))
                                 grid_info = player_grid_locations[card_id]
                                 break
-                
+
                 if not grid_info:
                     return None
-                
+
                 if "center_grid_cell" not in grid_info:
                     return None
-                
+
                 center_cell = grid_info["center_grid_cell"]
-                
+
                 # Extract row and column from center_cell - maintaining [row, col] format
-                row = int(center_cell[0]) if isinstance(center_cell[0], (int, float)) else 0
-                col = int(center_cell[1]) if isinstance(center_cell[1], (int, float)) else 0
-                
+                row = int(center_cell[0]) if isinstance(center_cell[0], int | float) else 0
+                col = int(center_cell[1]) if isinstance(center_cell[1], int | float) else 0
+
                 if question_key == "localize_card_on_grid_row":
                     # Return row (0-indexed as specified)
                     result = str(row)
                     return result
-                
+
                 elif question_key == "localize_card_on_grid_column":
                     # Return column (0-indexed as specified)
                     result = str(col)
                     return result
-                
+
                 elif question_key == "localize_card_on_grid_number":
                     # For grid cell number, compute based on row and column
                     # Numbering from left to right and bottom to top as specified in the question
-                    
+
                     # Get grid dimensions
                     grid_dims = data.get("scene_setup", {}).get("grid", {}).get("granularity", 3)
-                    
+
                     # Calculate cell number (0-indexed)
                     # In the question: "numbering from left to right and bottom to top"
                     # With bottom left as (0,0), this is already correct orientation
                     cell_number = row * grid_dims + col
                     return str(cell_number)
-                
+
                 elif question_key == "localize_card_on_grid_3x3":
                     # Map grid coordinates to position words
                     # Using the coordinate system where bottom left is (0,0) and upper right is (3,3)
-                    
+
                     # Grid positions matching the orientation where bottom left is (0,0)
                     # and rows increase upward, columns increase rightward
                     position_map = {
@@ -423,18 +416,18 @@ class AnswerExtractor:
                         (0, 0): "bottom left",
                         (0, 1): "bottom middle",
                         (0, 2): "bottom right",
-                        
+
                         # Middle row (row=1)
                         (1, 0): "middle left",
                         (1, 1): "middle",
                         (1, 2): "middle right",
-                        
+
                         # Upper row (row=2)
                         (2, 0): "upper left",
                         (2, 1): "upper middle",
                         (2, 2): "upper right"
                     }
-                    
+
                     # Get result from map, with bounds checking to avoid out-of-range indices
                     if 0 <= row <= 2 and 0 <= col <= 2:
                         result = position_map.get((row, col), "unknown position")
@@ -444,9 +437,9 @@ class AnswerExtractor:
                         valid_row = max(0, min(row, 2))
                         valid_col = max(0, min(col, 2))
                         result = position_map.get((valid_row, valid_col), "unknown position")
-                    
+
                     return result
-            
+
             else:
                 return None
         else:
@@ -464,7 +457,7 @@ if __name__ == '__main__':
     }
     print("--- CHESS ---")
     chess_keys = [
-        "count_pieces", "identify_type_several_pieces", 
+        "count_pieces", "identify_type_several_pieces",
         "count_localization_pieces_on_row", "identify_localization_piece_color",
         "count_identification_localization_black_pieces_column"
     ]
@@ -476,7 +469,7 @@ if __name__ == '__main__':
         "community_cards": {
             "n_cards": 3,
             "n_verso": 1,
-            "card_names": ["Ace of Spades", "King of Hearts", "Queen of Diamonds"] 
+            "card_names": ["Ace of Spades", "King of Hearts", "Queen of Diamonds"]
         },
         "players": [
             {"player_id": "player1", "hand_config": {"n_cards": 2}},
@@ -503,7 +496,7 @@ if __name__ == '__main__':
     }
     print("\n--- POKER ---") # Corrected newline escape
     poker_keys = [
-        "count_total_cards", "identify_community_cards", 
+        "count_total_cards", "identify_community_cards",
         "identify_most_cards_player", "count_cards_per_player",
         "count_overlap_cards", "identify_overlap_layout_mode",
         "count_overlap_lines", "count_overlap_columns",
@@ -511,4 +504,4 @@ if __name__ == '__main__':
     ]
     for key in poker_keys:
         ans = extractor.extract_answer(sample_poker_data, key, "poker")
-        print(f"Q: {key} -> A: {ans}") 
+        print(f"Q: {key} -> A: {ans}")

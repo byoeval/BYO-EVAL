@@ -1,20 +1,19 @@
 import random
-from typing import List, Dict, Union
 
 # --- Card Constants ---
-RANKS: List[str] = ['A', '2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K']
-SUITS: List[str] = ['S', 'D', 'H', 'C'] # Spades, Diamonds, Hearts, Clubs
-HEADS: List[str] = ['A', 'K', 'Q', 'J', '10'] # Ace, King, Queen, Jack, 10
-NUMBERS: List[str] = ['2', '3', '4', '5', '6', '7', '8', '9']
+RANKS: list[str] = ['A', '2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K']
+SUITS: list[str] = ['S', 'D', 'H', 'C'] # Spades, Diamonds, Hearts, Clubs
+HEADS: list[str] = ['A', 'K', 'Q', 'J', '10'] # Ace, King, Queen, Jack, 10
+NUMBERS: list[str] = ['2', '3', '4', '5', '6', '7', '8', '9']
 
 # --- Default Deck ---
-DEFAULT_CARD_NAMES: List[str] = [f"{rank}{suit}" for suit in SUITS for rank in RANKS]
+DEFAULT_CARD_NAMES: list[str] = [f"{rank}{suit}" for suit in SUITS for rank in RANKS]
 
 # --- Card Presets ---
-CARD_PRESETS: Dict[str, List[str]] = {
+CARD_PRESETS: dict[str, list[str]] = {
     "default": DEFAULT_CARD_NAMES,
-    "red": [card for card in DEFAULT_CARD_NAMES if card.endswith('D') or card.endswith('H')],
-    "black": [card for card in DEFAULT_CARD_NAMES if card.endswith('S') or card.endswith('C')],
+    "red": [card for card in DEFAULT_CARD_NAMES if card.endswith(('D', 'H'))],
+    "black": [card for card in DEFAULT_CARD_NAMES if card.endswith(('S', 'C'))],
     "spades": [card for card in DEFAULT_CARD_NAMES if card.endswith('S')],
     "diamonds": [card for card in DEFAULT_CARD_NAMES if card.endswith('D')],
     "hearts": [card for card in DEFAULT_CARD_NAMES if card.endswith('H')],
@@ -24,7 +23,7 @@ CARD_PRESETS: Dict[str, List[str]] = {
     # Add more presets as needed
 }
 
-def get_card_pool(config_value: Union[str, int, List[str]]) -> List[str]:
+def get_card_pool(config_value: str | int | list[str]) -> list[str]:
     """
     Determines the pool of available cards based on the configuration value.
 
@@ -60,7 +59,7 @@ def get_card_pool(config_value: Union[str, int, List[str]]) -> List[str]:
     else:
         raise TypeError(f"Unsupported type for card pool configuration: {type(config_value)}.")
 
-def sample_cards_from_pool(pool: List[str], n_cards: int) -> List[str]:
+def sample_cards_from_pool(pool: list[str], n_cards: int) -> list[str]:
     """
     Samples cards from a given pool with replacement.
 
@@ -80,4 +79,4 @@ def sample_cards_from_pool(pool: List[str], n_cards: int) -> List[str]:
 # pool2 = get_card_pool("red") # Get all red cards
 # pool3 = get_card_pool(["AS", "KD", "QH"]) # Use a specific list
 
-# hand = sample_cards_from_pool(pool2, 5) # Sample 5 cards (with replacement) from red cards 
+# hand = sample_cards_from_pool(pool2, 5) # Sample 5 cards (with replacement) from red cards

@@ -1,10 +1,10 @@
+from typing import Any
+
 import bpy
-import os
-from scene_setup.models import GridModel
-from typing import Tuple, Optional, Dict, Any
+
 # --- Grid Drawing Logic ---
 
-def _draw_grid_on_image(image: bpy.types.Image, grid_config: Dict[str, Any]) -> bool:
+def _draw_grid_on_image(image: bpy.types.Image, grid_config: dict[str, Any]) -> bool:
     """
     Draws a grid directly on the provided Blender Image object's pixel data.
 
@@ -14,7 +14,7 @@ def _draw_grid_on_image(image: bpy.types.Image, grid_config: Dict[str, Any]) -> 
             granularity (int): Number of divisions for the grid.
             line_thickness (int): Thickness of the grid lines in pixels.
             line_color_rgba (tuple): RGBA color for the grid lines.
-    
+
     Returns:
         bool: True if drawing was attempted, False if image was invalid.
     """
@@ -47,7 +47,6 @@ def _draw_grid_on_image(image: bpy.types.Image, grid_config: Dict[str, Any]) -> 
         # However, this function is now generic.
         # If image.pixels is accessed on an image without data, it can error.
         # For now, assume if size is non-zero, pixels can be accessed.
-        pass
 
 
     try:
@@ -103,14 +102,14 @@ def _draw_grid_on_image(image: bpy.types.Image, grid_config: Dict[str, Any]) -> 
         print(f"Error (draw_grid_on_image): Could not set pixels for image '{image.name}': {e}")
         return False
 
-def add_grid_to_image_file(image_filepath: str, grid_config: Dict[str, Any], output_filepath: Optional[str] = None) -> bool:
+def add_grid_to_image_file(image_filepath: str, grid_config: dict[str, Any], output_filepath: str | None = None) -> bool:
     """
     Loads an image from a file, draws a grid on it, and saves it.
 
     Args:
         image_filepath: Path to the input image file.
         grid_config: Configuration for the grid (n_divisions, line_thickness, etc.).
-        output_filepath: Optional. Path to save the modified image. 
+        output_filepath: Optional. Path to save the modified image.
                          If None, overwrites the input file.
 
     Returns:
@@ -121,7 +120,7 @@ def add_grid_to_image_file(image_filepath: str, grid_config: Dict[str, Any], out
     # For simplicity, we'll load it. If it was already in bpy.data.images, this might get that one.
     # A more robust way for temporary processing might involve unique names or direct pixel libs.
     loaded_image = bpy.data.images.load(filepath=image_filepath)
-    
+
     if not loaded_image:
         print(f"Error: Could not load image from {image_filepath}")
         return False
@@ -143,7 +142,7 @@ def add_grid_to_image_file(image_filepath: str, grid_config: Dict[str, Any], out
         # Save the modified image
         save_path = output_filepath if output_filepath else image_filepath
         print(f"Saving modified image to: {save_path}")
-        
+
         # Important: Blender needs to know the file format for saving.
         # We infer it from the original filepath or default to PNG.
         # This might not be robust if output_filepath has a different extension.
@@ -161,20 +160,18 @@ def add_grid_to_image_file(image_filepath: str, grid_config: Dict[str, Any], out
 
         # If we are overwriting, filepath_raw might be set.
         # If saving to a new path, it's better to set filepath_raw.
-        loaded_image.filepath_raw = save_path 
-        
+        loaded_image.filepath_raw = save_path
+
         try:
             loaded_image.save()
             print(f"Successfully saved modified image to {save_path}")
         except RuntimeError as e:
             print(f"Error saving modified image to {save_path}: {e}")
             success = False
-    
+
     # Clean up by removing the image from Blender's data unless it's meant to persist
     # For a post-processing step like this, usually, we remove it.
-    if loaded_image.users == 0: # Only remove if not used elsewhere (e.g. by a material)
-         bpy.data.images.remove(loaded_image)
-    elif loaded_image.name in bpy.data.images: # Check if still exists before trying to remove
+    if loaded_image.users == 0 or loaded_image.name in bpy.data.images: # Only remove if not used elsewhere (e.g. by a material)
          bpy.data.images.remove(loaded_image)
 
 

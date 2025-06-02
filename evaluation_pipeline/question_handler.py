@@ -1,7 +1,6 @@
 import json
-from typing import Dict, Optional, List
+import re  # For more complex string manipulations if needed
 import sys
-import re # For more complex string manipulations if needed
 
 preprompts = {
     "chess":{
@@ -31,13 +30,13 @@ class QuestionHandler:
             all_questions_path: Path to the JSON file containing all questions.
         """
         self.all_questions_path: str = all_questions_path
-        self.all_questions_data: Optional[Dict] = self._load_json_data(self.all_questions_path)
+        self.all_questions_data: dict | None = self._load_json_data(self.all_questions_path)
         if self.all_questions_data is None:
             print(f"Warning: Could not load questions from {self.all_questions_path}. "
                   "Converter may not function correctly.", file=sys.stderr)
-        
+
         # Direct mapping of question keys to their declarative forms
-        self.declarative_instructions: Dict[str, Dict[str, str]] = {
+        self.declarative_instructions: dict[str, dict[str, str]] = {
             "chess": {
                 "count_pieces": "The number of pieces in the image is:",
                 "count_squares": "The number of squares the board has is:",
@@ -84,9 +83,9 @@ class QuestionHandler:
                 "localize_card_on_grid_3x3": "The position in the 3x3 grid where card X is located is:",
             }
         }
-        
+
         # Direct mapping of question keys to their fill-in-the-blank forms
-        self.fill_in_blank_instructions: Dict[str, Dict[str, str]] = {
+        self.fill_in_blank_instructions: dict[str, dict[str, str]] = {
             "chess": {
                 "count_pieces": "There are ____ pieces in the image.",
                 "count_squares": "The board has ____ squares.",
@@ -133,8 +132,8 @@ class QuestionHandler:
 
             }
         }
-        
-    def _load_json_data(self, file_path: str) -> Optional[Dict]:
+
+    def _load_json_data(self, file_path: str) -> dict | None:
         """
         Loads data from a JSON file. (Internal method)
 
@@ -145,7 +144,7 @@ class QuestionHandler:
             A dictionary containing the JSON data, or None if an error occurs.
         """
         try:
-            with open(file_path, 'r') as f:
+            with open(file_path) as f:
                 return json.load(f)
         except FileNotFoundError:
             print(f"Error: The file {file_path} was not found.", file=sys.stderr)
@@ -154,29 +153,29 @@ class QuestionHandler:
             print(f"Error: Could not decode JSON from {file_path}. Details: {e}", file=sys.stderr)
             return None
 
-    def add_preprompt(self, questions: List[str], game: str, preprompt_types: List[str]) -> List[str]:
+    def add_preprompt(self, questions: list[str], game: str, preprompt_types: list[str]) -> list[str]:
         """
         Adds preprompts to a list of questions based on the game and preprompt types.
-        
+
         Args:
             questions: List of questions to add preprompts to.
             game: The game context for the questions ('chess' or 'poker').
-            preprompt_types: List of preprompt types to add. Can include 'debiased', 
+            preprompt_types: List of preprompt types to add. Can include 'debiased',
                             'cot', 'debiased_cot', '' (empty string), or a custom prompt.
-                            
+
         Returns:
             A list of questions with preprompts added.
         """
         result = []
-        
+
         for question in questions:
             modified_question = question
-            
+
             for preprompt_type in preprompt_types:
                 # Skip if preprompt_type is empty
                 if not preprompt_type:
                     continue
-                
+
                 # Check if preprompt_type is a standard type
                 if preprompt_type in ["debiased", "cot", "debiased_cot"]:
                     # Get the preprompt from the preprompts dictionary
@@ -186,12 +185,12 @@ class QuestionHandler:
                 else:
                     # If it's a custom preprompt, add it directly
                     modified_question = f"{preprompt_type} {modified_question}"
-            
+
             result.append(modified_question)
-        
+
         return result
 
-    def _get_original_question_text(self, question_key: str, game: str, legend: str = None) -> Optional[str]:
+    def _get_original_question_text(self, question_key: str, game: str, legend: str = None) -> str | None:
         """
         Retrieves the original question text for a given key and game.
 
@@ -209,68 +208,68 @@ class QuestionHandler:
             # print(f"Error: Question data not loaded. Cannot get original text for '{question_key}' in game '{game}'.", file=sys.stderr)
             return None
         try:
-            game_questions: Dict[str, str] = self.all_questions_data[game]
+            game_questions: dict[str, str] = self.all_questions_data[game]
             original_question: str = game_questions[question_key]
-            
+
             # Special case for chess and poker games when legend is provided
             if legend and "X" in original_question:
-                import random
                 import json
+                import random
 
                 if game == "chess" and question_key == "count_identification_piece_type":
                     try:
                         legend_data = json.loads(legend) if isinstance(legend, str) else legend
                         pieces = legend_data.get("pieces", {})
                         # Extract all unique piece types from the legend
-                        piece_types = set(piece.get("type") for piece in pieces.values() if "type" in piece)
+                        piece_types = {piece.get("type") for piece in pieces.values() if "type" in piece}
                         if piece_types:
                             # Replace X with a random piece type from the legend
                             random_type = random.choice(list(piece_types))
                             original_question = original_question.replace("X", random_type)
                     except (json.JSONDecodeError, AttributeError, TypeError) as e:
                         print(f"Error processing chess legend for question '{question_key}': {e}", file=sys.stderr)
-                
+
                 elif game == "poker" and any(key in question_key for key in ["count_identification_color_cards", "count_identification_rank_cards", "count_identification_type_cards"]):
                     try:
                         legend_data = json.loads(legend) if isinstance(legend, str) else legend
                         community_cards = legend_data.get("community_cards", {})
                         card_names = community_cards.get("card_names", [])
-                        
+
                         if "count_identification_color_cards" in question_key and card_names:
                             # For poker suits (colors): Hearts (H), Diamonds (D), Clubs (C), Spades (S)
-                            suits = set(card[-1] for card in card_names if card and len(card) >= 1)
+                            suits = {card[-1] for card in card_names if card and len(card) >= 1}
                             if suits:
                                 # Map single letter to full suit name
                                 suit_names = {"H": "Hearts", "D": "Diamonds", "C": "Clubs", "S": "Spades"}
                                 random_suit = random.choice(list(suits))
                                 suit_name = suit_names.get(random_suit, random_suit)
                                 original_question = original_question.replace("X", suit_name)
-                        
+
                         elif "count_identification_rank_cards" in question_key and card_names:
                             # Extract ranks from card names (e.g., "2S" -> "2", "10H" -> "10", "QC" -> "Q")
-                            ranks = set(card[:-1] for card in card_names if card and len(card) >= 2)
+                            ranks = {card[:-1] for card in card_names if card and len(card) >= 2}
                             if ranks:
                                 random_rank = random.choice(list(ranks))
                                 original_question = original_question.replace("X", random_rank)
-                        
+
                         elif "count_identification_type_cards" in question_key and card_names:
                             # In poker context, "type" might refer to face cards or numerical cards
                             card_types = {"A": "Ace", "K": "King", "Q": "Queen", "J": "Jack", "T": "10"}
                             # Extract first character of each card name
-                            types = set(card[0] for card in card_names if card)
+                            types = {card[0] for card in card_names if card}
                             if types:
                                 random_type = random.choice(list(types))
                                 type_name = card_types.get(random_type, random_type)
                                 original_question = original_question.replace("X", type_name)
                     except (json.JSONDecodeError, AttributeError, TypeError) as e:
                         print(f"Error processing poker legend for question '{question_key}': {e}", file=sys.stderr)
-            
+
             return original_question
         except KeyError:
             # print(f"Error: Game '{game}' or question key '{question_key}' not found in loaded data.", file=sys.stderr)
             return None
 
-    def identify_question_type(self, question_key: str, game: str) -> Optional[str]:
+    def identify_question_type(self, question_key: str, game: str) -> str | None:
         """
         Identifies the type of a question based on its key.
         Types can be 'count', 'identification', 'localization', or combinations.
@@ -288,7 +287,7 @@ class QuestionHandler:
             return None # Data loading failed
 
         try:
-            game_questions: Dict[str, str] = self.all_questions_data[game]
+            game_questions: dict[str, str] = self.all_questions_data[game]
         except KeyError:
             # print(f"Error: Game '{game}' not found in {self.all_questions_path}.", file=sys.stderr)
             return None # Game not found
@@ -298,7 +297,7 @@ class QuestionHandler:
             print(f"Error: Question key '{question_key}' not found in game '{game}' in {self.all_questions_path}.", file=sys.stderr)
             return None # Question key not found in the specified game
 
-        type_prefixes: Dict[str, str] = {
+        type_prefixes: dict[str, str] = {
             "count_identification_localization": "count_identification_localization",
             "count_identification": "count_identification",
             "count_localization": "count_localization",
@@ -314,7 +313,7 @@ class QuestionHandler:
 
         return "unknown" # Key exists, but no prefix matches
 
-    def question_to_declarative(self, question_key: str, game: str, original_question: str = None, legend: str = None) -> Optional[str]:
+    def question_to_declarative(self, question_key: str, game: str, original_question: str = None, legend: str = None) -> str | None:
         """
         Returns a declarative form of the question using direct mapping.
 
@@ -329,16 +328,16 @@ class QuestionHandler:
         """
         if self.all_questions_data is None:
             return None
-        
+
         # Check if the game exists
         if game not in self.declarative_instructions:
             print(f"Error: Game '{game}' not found in declarative_instructions mapping.", file=sys.stderr)
             return None
-        
+
         # Get the declarative instruction for this key
         if question_key in self.declarative_instructions[game]:
             declarative_template = self.declarative_instructions[game][question_key]
-            
+
             # If we have both an original question with substitutions and the template contains "X"
             if original_question and "X" in declarative_template:
                 # For chess: extract the piece type from the original question
@@ -348,7 +347,7 @@ class QuestionHandler:
                     if match:
                         piece_type = match.group(1).lower()
                         declarative_template = declarative_template.replace("X", piece_type)
-                
+
                 # For poker: extract the card attribute from the original question
                 elif game == "poker" and any(key in question_key for key in ["count_identification_color_cards", "count_identification_rank_cards", "count_identification_type_cards"]):
                     import re
@@ -364,19 +363,19 @@ class QuestionHandler:
                         match = re.search(r"how many (ace|king|queen|jack|\d+) cards", original_question.lower())
                         if match:
                             declarative_template = declarative_template.replace("X", match.group(1))
-            
+
             return declarative_template
-        
+
         # Fall back to old method if key doesn't exist in mapping
         if not original_question:
             original_question = self._get_original_question_text(question_key, game, legend)
         if original_question is None:
             return None
-        
+
         identified_type = self.identify_question_type(question_key, game)
         if identified_type is None:
             return None
-        
+
         # SHOULD NOT BE USED. Use declarative_instructions instead.
         return self._generate_declarative_statement(original_question, identified_type)
 
@@ -394,40 +393,40 @@ class QuestionHandler:
         # General transformations (can be refined based on patterns)
         if question_type == "count":
             if statement_base.lower().startswith("how many"):
-                transformed = re.sub(r"^how many\\s+(.*?)\\s+(?:are there|are|has)\\b", 
-                                     r"The number of \\1", 
+                transformed = re.sub(r"^how many\\s+(.*?)\\s+(?:are there|are|has)\\b",
+                                     r"The number of \\1",
                                      statement_base, flags=re.IGNORECASE)
                 if transformed != statement_base: # Check if substitution happened
                     if " has" in statement_base.lower() and " the board has" not in transformed.lower():
-                        transformed = transformed.replace(" has", "") 
+                        transformed = transformed.replace(" has", "")
                         transformed = transformed.replace("the board", "the board has")
                     return f"{transformed.strip()} is:"
             return f"The count for '{statement_base}' is:"
         elif question_type == "identification":
             if statement_base.lower().startswith("what piece is on the board"):
-                return f"The piece on the board (among pawn, rook, knight, bishop, king and queen) is:"
+                return "The piece on the board (among pawn, rook, knight, bishop, king and queen) is:"
             if statement_base.lower().startswith("what pieces are on the board"):
-                return f"The pieces on the board (among pawn, rook, knight, bishop, king and queen) are:"
+                return "The pieces on the board (among pawn, rook, knight, bishop, king and queen) are:"
             if statement_base.lower().startswith("what color is the piece on the board"):
-                return f"The color of the piece on the board is:"
+                return "The color of the piece on the board is:"
             if statement_base.lower().startswith("what are the cards on the table"):
-                 return f"The cards on the table are:"
+                 return "The cards on the table are:"
             if statement_base.lower().startswith("which player has the most cards"):
-                return f"The player with the most cards is:"
+                return "The player with the most cards is:"
             return f"The identification for '{statement_base}' is:"
         elif question_type == "localization":
             if statement_base.lower().startswith("how many"):
                 if " separate " in statement_base.lower():
-                    transformed = re.sub(r"^how many\\s+(.*?)\\s+separate\\s+(.*?)$", 
-                                         r"The number of \\1 separating \\2", 
+                    transformed = re.sub(r"^how many\\s+(.*?)\\s+separate\\s+(.*?)$",
+                                         r"The number of \\1 separating \\2",
                                          statement_base, flags=re.IGNORECASE)
                     if transformed != statement_base:
                         return f"{transformed.strip()} is:"
-                else: 
-                    transformed = re.sub(r"^how many\\s+(.*?)\\s+(?:are there|are|has)\\b", 
-                                         r"The number of \\1", 
+                else:
+                    transformed = re.sub(r"^how many\\s+(.*?)\\s+(?:are there|are|has)\\b",
+                                         r"The number of \\1",
                                          statement_base, flags=re.IGNORECASE)
-                    if transformed != statement_base: 
+                    if transformed != statement_base:
                         return f"{transformed.strip()} is:"
             match = re.match(r"^(.*?):COMMA:\\s*on which (column|row) is (.*?)$", statement_base.replace(",", ":COMMA:"), flags=re.IGNORECASE) # Temporarily replace comma
             if match:
@@ -437,16 +436,16 @@ class QuestionHandler:
             return f"The localization for '{statement_base}' is:"
         elif question_type == "count_localization":
             if statement_base.lower().startswith("numbering") and "how many" in statement_base.lower():
-                transformed = re.sub(r"how many\\s+(.+?)\\s+(?:is|are)\\s+(on the row X|on the column X|on row Y|at column Y|on the board at row Y|on the board at column Y)", 
-                                     r"the number of \\1 \\2", 
+                transformed = re.sub(r"how many\\s+(.+?)\\s+(?:is|are)\\s+(on the row X|on the column X|on row Y|at column Y|on the board at row Y|on the board at column Y)",
+                                     r"the number of \\1 \\2",
                                      statement_base, flags=re.IGNORECASE)
                 if transformed != statement_base:
                      return f"{transformed.strip()} is:"
             return f"The count and localization for '{statement_base}' is:"
         elif question_type == "count_identification":
             if statement_base.lower().startswith("how many") and ("white pieces" in statement_base.lower() or "black pieces" in statement_base.lower() or "x pieces" in statement_base.lower()):
-                transformed = re.sub(r"^how many\\s+(.*?)\\s+(?:are there|are)\\b", 
-                                     r"The number of \\1", 
+                transformed = re.sub(r"^how many\\s+(.*?)\\s+(?:are there|are)\\b",
+                                     r"The number of \\1",
                                      statement_base, flags=re.IGNORECASE)
                 if transformed != statement_base:
                     return f"{transformed.strip()} is:"
@@ -464,7 +463,7 @@ class QuestionHandler:
         type_name_formatted = question_type.replace("_", " ")
         return f"The {type_name_formatted} for '{statement_base}' is:"
 
-    def question_to_fill_in_the_blanks(self, question_key: str, game: str, original_question: str = None, legend: str = None) -> Optional[str]:
+    def question_to_fill_in_the_blanks(self, question_key: str, game: str, original_question: str = None, legend: str = None) -> str | None:
         """
         Returns a fill-in-the-blank form of the question using direct mapping.
 
@@ -479,16 +478,16 @@ class QuestionHandler:
         """
         if self.all_questions_data is None:
             return None
-        
+
         # Check if the game exists
         if game not in self.fill_in_blank_instructions:
             print(f"Error: Game '{game}' not found in fill_in_blank_instructions mapping.", file=sys.stderr)
             return None
-        
+
         # Check if the key exists in the game
         if question_key in self.fill_in_blank_instructions[game]:
             fill_in_template = self.fill_in_blank_instructions[game][question_key]
-            
+
             # If we have both an original question with substitutions and the template contains "X"
             if original_question and "X" in fill_in_template:
                 # For chess: extract the piece type from the original question
@@ -498,7 +497,7 @@ class QuestionHandler:
                     if match:
                         piece_type = match.group(1).lower()
                         fill_in_template = fill_in_template.replace("X", piece_type)
-                
+
                 # For poker: extract the card attribute from the original question
                 elif game == "poker" and any(key in question_key for key in ["count_identification_color_cards", "count_identification_rank_cards", "count_identification_type_cards"]):
                     import re
@@ -514,15 +513,15 @@ class QuestionHandler:
                         match = re.search(r"how many (ace|king|queen|jack|\d+) cards", original_question.lower())
                         if match:
                             fill_in_template = fill_in_template.replace("X", match.group(1))
-            
+
             # Return the fill-in-the-blank form with instruction to only fill in the blank
             return f"{fill_in_template} Write nothing more than the content to fill-in the blank"
-        
+
         # Fall back to using the declarative form with a fill-in-the-blank suffix
         declarative_form = self.question_to_declarative(question_key, game, original_question, legend)
         if declarative_form is None:
             return None
-        
+
         # Add the fill-in-the-blank suffix
         return f"{declarative_form} ____. Write nothing more than the content to fill-in the blank"
 
@@ -617,7 +616,7 @@ class QuestionHandler:
         type_name_formatted = question_type.replace("_", " ")
         return f"The {type_name_formatted} for '{statement_base}' is {fill_in_suffix}"
 
-    def generate_questions(self, game: str, keys: List[str], instruction_specs: List[str], tasks: List[str] = None, preprompt_types: List[str] = None, img_legend: str = None) -> List[str]:
+    def generate_questions(self, game: str, keys: list[str], instruction_specs: list[str], tasks: list[str] = None, preprompt_types: list[str] = None, img_legend: str = None) -> list[str]:
         """
         Generates questions based on keys or tasks, with instructions and preprompts.
 
@@ -632,9 +631,9 @@ class QuestionHandler:
                               - "fill_in": Convert to fill-in-the-blank form
                               - Any custom text: Add as custom instruction
             tasks: A list of task types to generate questions for when keys is empty.
-                  Possible values: "counting", "localization", "identification", or 
+                  Possible values: "counting", "localization", "identification", or
                   cross-tasks with "_" separators.
-            preprompt_types: A list of preprompt types to add. Can include 'debiased', 
+            preprompt_types: A list of preprompt types to add. Can include 'debiased',
                             'cot', 'debiased_cot', '' (empty string), or a custom prompt.
 
         Returns:
@@ -648,11 +647,11 @@ class QuestionHandler:
             preprompt_types = []
         if instruction_specs is None or len(instruction_specs) == 0:
             instruction_specs = [""]  # Default to empty spec
-        
+
         # If keys is empty and tasks is provided, generate keys based on tasks
         if not keys and tasks:
             generated_keys = []
-            
+
             for task in tasks:
                 if task == "counting":
                     if game == "chess":
@@ -661,7 +660,7 @@ class QuestionHandler:
                         generated_keys.append("count_total_cards")
                     else:
                         print(f"Warning: Task '{task}' not implemented for game '{game}'", file=sys.stderr)
-                
+
                 elif task == "localization":
                     if game == "chess":
                         # Add both row and column localization questions
@@ -675,7 +674,7 @@ class QuestionHandler:
                         generated_keys.append("localize_card_on_grid_3x3")
                     else:
                         print(f"Warning: Task '{task}' not implemented for game '{game}'", file=sys.stderr)
-                
+
                 elif task == "identification":
                     if game == "chess":
                         generated_keys.append("identify_type_one_piece")
@@ -683,28 +682,28 @@ class QuestionHandler:
                         generated_keys.append("identify_cards")
                     else:
                         print(f"Warning: Task '{task}' not implemented for game '{game}'", file=sys.stderr)
-                
+
                 elif "_" in task:
                     # Cross-task (e.g., "counting_localization")
                     print(f"Warning: Cross-task '{task}' not fully implemented yet", file=sys.stderr)
-                
+
                 else:
                     print(f"Warning: Unknown task '{task}'", file=sys.stderr)
-            
+
             keys = generated_keys
 
         # Step 1: Generate questions with instructions for all keys
         questions_with_instructions = []
-        
+
         for key in keys:
             original_question_text = self._get_original_question_text(key, game, img_legend)
             if original_question_text is None:
                 print(f"Warning: Question key '{key}' not found in game '{game}'")
                 continue  # Skip this question if the key is not found
-            
+
             # Get the base question text without trailing question mark
             base_question = original_question_text.rstrip("?").strip()
-            
+
             # For each key, apply all instruction specs
             for spec in instruction_specs:
                 if spec == "" or spec == "neutral":
@@ -713,7 +712,7 @@ class QuestionHandler:
                     if question_type is None:
                         questions_with_instructions.append(original_question_text)  # Use original as fallback
                         continue
-                    
+
                     instruction = ""
                     if question_type == "count":
                         instruction = "? Answer with a single number."
@@ -736,10 +735,10 @@ class QuestionHandler:
                     elif question_type == "unknown":
                         instruction = "? Concise answer :"  # Default for unknown
                     else:  # Should not be reached if identify_question_type is comprehensive
-                        instruction = "? Concise answer :" 
-                    
+                        instruction = "? Concise answer :"
+
                     questions_with_instructions.append(f"{base_question}{instruction}")
-                
+
                 elif spec == "declarative":
                     # Add declarative format instruction instead of replacing the question
                     declarative_form = self.question_to_declarative(key, game, original_question_text, img_legend)
@@ -748,7 +747,7 @@ class QuestionHandler:
                     else:
                         # Fall back to original question with generic instruction if declarative form not available
                         questions_with_instructions.append(f"{base_question}? Respond with a declarative statement.")
-                    
+
                 elif spec == "fill_in":
                     # Add fill-in-the-blank instruction instead of replacing the question
                     fill_in_form = self.question_to_fill_in_the_blanks(key, game, original_question_text, img_legend)
@@ -759,17 +758,17 @@ class QuestionHandler:
                     else:
                         # Fall back to original question with generic instruction if fill-in form not available
                         questions_with_instructions.append(f"{base_question}? Fill in the blank with your answer.")
-                
+
                 else:
                     # If spec is a custom instruction, append it to the question
                     questions_with_instructions.append(f"{base_question}? {spec}")
-        
+
         # Step 2: Add preprompts to questions with instructions
         if preprompt_types:
             final_questions = self.add_preprompt(questions_with_instructions, game, preprompt_types)
         else:
             final_questions = questions_with_instructions
-            
+
         return final_questions
 
 
@@ -779,11 +778,11 @@ if __name__ == "__main__":
         print(f"\n{'=' * 50}")
         print(f"  {title}")
         print(f"{'=' * 50}")
-    
+
     # Initialize the QuestionHandler
     print_test_section("INITIALIZING QuestionHandler")
     handler = QuestionHandler("diagnostic/questions/all_questions.json")
-    
+
     if handler.all_questions_data is None:
         print("❌ ERROR: Could not load questions from diagnostic/questions/all_questions.json")
         print("    Please make sure the file exists and contains valid JSON.")
@@ -791,21 +790,21 @@ if __name__ == "__main__":
     else:
         print("✅ Successfully loaded questions data")
         print(f"    Found {len(handler.all_questions_data)} game(s)")
-        
+
         # Print a sample of the games and questions
         print("\nGames available:")
         for game, questions in handler.all_questions_data.items():
             print(f"  - {game}: {len(questions)} questions")
-        
+
         # Choose a game for testing (use the first one available)
         test_game = list(handler.all_questions_data.keys())[0]
         sample_questions = list(handler.all_questions_data[test_game].keys())[:3]
-        
+
         print(f"\nSample questions from '{test_game}':")
         for q_key in sample_questions:
             q_text = handler._get_original_question_text(q_key, test_game)
             print(f"  - {q_key}: {q_text}")
-    
+
     # Test question type identification
     print_test_section("TESTING identify_question_type()")
     for q_key in sample_questions:
@@ -813,7 +812,7 @@ if __name__ == "__main__":
         print(f"Question key: {q_key}")
         print(f"Type identified: {q_type}")
         print("---")
-    
+
     # Test question to declarative conversion
     print_test_section("TESTING question_to_declarative()")
     for q_key in sample_questions:
@@ -822,7 +821,7 @@ if __name__ == "__main__":
         print(f"Original: {original}")
         print(f"Declarative: {declarative}")
         print("---")
-    
+
     # Test question to fill-in-the-blank conversion
     print_test_section("TESTING question_to_fill_in_the_blanks()")
     for q_key in sample_questions:
@@ -831,85 +830,85 @@ if __name__ == "__main__":
         print(f"Original: {original}")
         print(f"Fill-in-blank: {blank}")
         print("---")
-    
+
     # Test reformulation with multiple specs
     print_test_section("TESTING generate_questions with multiple instruction specs")
-    
+
     # Use different types of instruction specs
     multiple_specs = ["", "declarative", "fill_in", "Answer concisely with a single word."]
-    
+
     # Get a single question key for clarity
     test_key = sample_questions[0] if sample_questions else None
     if test_key:
         print(f"\nGenerating multiple versions of question key: {test_key}")
         original = handler._get_original_question_text(test_key, test_game)
         print(f"Original question: {original}")
-        
+
         # Generate multiple versions with different instruction specs
         multiple_versions = handler.generate_questions(test_game, [test_key], multiple_specs)
-        
+
         print(f"\nGenerated {len(multiple_versions)} versions:")
         for i, version in enumerate(multiple_versions):
             print(f"  Version {i+1} ({multiple_specs[i]}): {version}")
-    
+
     # Test with preprompts
     print("\nAdding preprompts to multiple instruction specs:")
     if test_key:
         versions_with_preprompt = handler.generate_questions(
             test_game, [test_key], multiple_specs, preprompt_types=["debiased"]
         )
-        
+
         for i, version in enumerate(versions_with_preprompt):
             print(f"  Version {i+1} ({multiple_specs[i]} + debiased): {version}")
-    
+
     # Test task-based question generation with multiple instruction types
     print_test_section("TESTING tasks-based generation with multiple instruction specs")
-    
+
     # Generate questions for the "counting" task with multiple instruction types
     for game in ["chess", "poker"]:
         if game not in handler.all_questions_data:
             continue
-            
+
         print(f"\nTask-based generation for {game} with multiple instruction types:")
         task_questions = handler.generate_questions(
             game, [], ["", "declarative", "fill_in"], ["counting"]
         )
-        
+
         print(f"Generated {len(task_questions)} questions:")
         for i, question in enumerate(task_questions):
             print(f"  Question {i+1}: {question}")
 
     # Test the full combination of tasks, instruction specs, and preprompts
     print_test_section("TESTING full combination with multiple tasks, specs, and preprompts")
-    
+
     # Define test parameters
     test_tasks = ["counting", "identification"]
     test_specs = ["", "Answer in one word only."]
     test_preprompts = ["debiased", "cot"]
-    
+
     print("\nGenerating questions with:")
     print(f"  Tasks: {test_tasks}")
     print(f"  Instruction specs: {test_specs}")
     print(f"  Preprompt types: {test_preprompts}")
-    
+
     # For chess game only (for brevity)
     if "chess" in handler.all_questions_data:
         # Generate the comprehensive set of questions
         full_questions = handler.generate_questions(
             "chess", [], test_specs, test_tasks, test_preprompts
         )
-        
+
         print(f"\nGenerated {len(full_questions)} total questions:")
         for i, question in enumerate(full_questions):
             print(f"  Question {i+1}: {question}")
-        
+
         # Expected number calculation
         expected_count = len(test_tasks) * len(test_specs)
         print(f"\nExpected question count: {len(test_tasks)} tasks × {len(test_specs)} specs = {expected_count} variants")
         print(f"Actual question count: {len(full_questions)}")
-        
+
         # Note: for localization in chess, we generate 2 questions (row and column)
         if "localization" in test_tasks:
             print("  Note: 'localization' task in chess generates 2 questions (row and column)")
-            
+
     print("\nTest script complete!")

@@ -1,9 +1,10 @@
-import bpy
-import os
-import sys
-import random
 import math
-from typing import Optional, Dict, Any, Tuple, Union, List
+import os
+import random
+import sys
+from typing import Any
+
+import bpy
 
 # Ensure workspace root is in path for sibling imports
 workspace_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
@@ -11,19 +12,21 @@ if workspace_root not in sys.path:
     sys.path.append(workspace_root)
 
 # Import necessary functions and models
-from utils.blender_utils import render_scene
+import contextlib
+
+from poker.config.models import ChipModel, ChipPileModel  # Import models
 from scene_setup.general_setup import build_setup_from_config
-from poker.config.models import ChipModel, ChipPileModel # Import models
+from utils.blender_utils import render_scene
 
 OUTPUT_IMAGE_PATH = "poker/img/chip_render.png" # Define output path
-_DEFAULT_CHIPS_BLEND_FILE = "poker/blend_files/CHIPS.blend" 
+_DEFAULT_CHIPS_BLEND_FILE = "poker/blend_files/CHIPS.blend"
 
 class PokerChipLoader:
     """Manages loading poker chip assets from a blend file (Placeholder)."""
 
-    def __init__(self, blend_file_path: Optional[str] = None):
+    def __init__(self, blend_file_path: str | None = None):
         self.blend_file_path = blend_file_path or _DEFAULT_CHIPS_BLEND_FILE
-        self.loaded_chips: Dict[str, bpy.types.Object] = {}
+        self.loaded_chips: dict[str, bpy.types.Object] = {}
         self._ensure_file_exists()
         print(f"[PokerChipLoader] Initialized (Placeholder) with: {self.blend_file_path}")
 
@@ -33,7 +36,7 @@ class PokerChipLoader:
             print(f"Warning: Chip blend file not found at {abs_path}. Chip loading will likely fail.")
             # In a real scenario, might raise FileNotFoundError or create a dummy file
 
-    def link_chip(self, chip_name: str) -> Optional[bpy.types.Object]:
+    def link_chip(self, chip_name: str) -> bpy.types.Object | None:
         """Links a chip object from the blend file (Placeholder)."""
         print(f"  [PokerChipLoader] Attempting to link chip: '{chip_name}' (Placeholder)")
         # In a real implementation:
@@ -42,7 +45,7 @@ class PokerChipLoader:
         # 3. Handle errors (object not found in blend file)
         # 4. Create a linked copy (bpy.data.objects.new linked to loaded data)
         # 5. Cache the original loaded object data if needed for efficiency
-        
+
         # Placeholder: Create a simple cylinder as a dummy chip
         try:
             # Ensure the dummy chip has a unique name to avoid conflicts
@@ -56,7 +59,7 @@ class PokerChipLoader:
             print(f"    Error creating dummy chip: {e}")
             return None
 
-    def get_chip_dimensions(self, chip_name: str) -> Optional[tuple[float, float, float]]:
+    def get_chip_dimensions(self, chip_name: str) -> tuple[float, float, float] | None:
          """Gets the dimensions of a chip (Placeholder)."""
          print(f"  [PokerChipLoader] Getting dimensions for: '{chip_name}' (Placeholder)")
          # Real implementation: Load/link the chip, get dimensions, maybe cache
@@ -67,11 +70,11 @@ class PokerChipLoader:
 
 def load_chip(
     chip_object_name: str,
-    location: Tuple[float, float, float],
-    scale_tuple: Tuple[float, float, float], 
-    color: Optional[Tuple[float, float, float, float]], 
-    blend_file_path: str 
-) -> Optional[bpy.types.Object]:
+    location: tuple[float, float, float],
+    scale_tuple: tuple[float, float, float],
+    color: tuple[float, float, float, float] | None,
+    blend_file_path: str
+) -> bpy.types.Object | None:
     """
     Internal function: Loads a specific chip object, makes it local, sets its transform and color.
     This function is intended to be called multiple times and should create independent objects.
@@ -91,10 +94,10 @@ def load_chip(
         print(f"Error: Blend file not found at {abs_blend_file_path}")
         return None
 
-    
+
     # Get object names before linking
-    before_object_names = set(o.name for o in bpy.data.objects)
-    
+    before_object_names = {o.name for o in bpy.data.objects}
+
     try:
         with bpy.data.libraries.load(abs_blend_file_path, link=True) as (data_from, data_to):
             if chip_object_name in data_from.objects:
@@ -110,14 +113,14 @@ def load_chip(
         return None
 
     # Get object names after linking
-    after_object_names = set(o.name for o in bpy.data.objects)
+    after_object_names = {o.name for o in bpy.data.objects}
     new_names = after_object_names - before_object_names
 
     linked_obj_instance = None
     if len(new_names) == 1:
         new_name = list(new_names)[0]
         linked_obj_instance = bpy.data.objects.get(new_name)
-        
+
     elif len(new_names) == 0:
         # This might happen if Blender reused an existing instance AND data block without creating anything new
         # Or if the link operation silently failed to create an instance.
@@ -130,7 +133,7 @@ def load_chip(
                  if not obj.users_collection or not any(coll == bpy.context.collection for coll in obj.users_collection):
                       linked_obj_instance = obj
                       found_existing = True
-                      break 
+                      break
         if not found_existing:
              print(f"Error: Linking '{chip_object_name}' created no new instance and no suitable existing instance found.")
              return None
@@ -148,16 +151,15 @@ def load_chip(
     if not any(coll == bpy.context.collection for coll in linked_obj_instance.users_collection):
         try:
             bpy.context.collection.objects.link(linked_obj_instance)
-        except RuntimeError as e:
-            try: bpy.data.objects.remove(linked_obj_instance, do_unlink=True)
-            except: pass
+        except RuntimeError:
+            with contextlib.suppress(Exception): bpy.data.objects.remove(linked_obj_instance, do_unlink=True)
             return None
 
-    # --- Make Local --- 
+    # --- Make Local ---
     if not linked_obj_instance:
          print("Error: Lost reference to object instance before making local.")
          return None
-    local_chip_object = None 
+    local_chip_object = None
     if linked_obj_instance.library:
         # print(f"Making '{linked_obj_instance.name}' and its data local...")
         bpy.ops.object.select_all(action='DESELECT')
@@ -165,7 +167,7 @@ def load_chip(
         linked_obj_instance.select_set(True)
         try:
             bpy.ops.object.make_local(type='ALL') # Crucial: Make Object, Data, and Materials local
-            local_chip_object = bpy.context.view_layer.objects.active 
+            local_chip_object = bpy.context.view_layer.objects.active
             if local_chip_object.name != linked_obj_instance.name:
                  print(f"Warning: Object name changed after make_local() to {local_chip_object.name}")
         except Exception as e:
@@ -180,12 +182,12 @@ def load_chip(
         print("Error: Failed to get local object reference.")
         return None
 
-    # --- Transform --- 
+    # --- Transform ---
     # print(f"Setting location to {location} and scale to {scale_tuple}...") # Reduced verbosity
     local_chip_object.location = location
     local_chip_object.scale = scale_tuple
 
-    # --- Change Color (Optional) --- 
+    # --- Change Color (Optional) ---
     if color:
         # print(f"Attempting to set Base Color to {color} for all materials...")
         if not local_chip_object.material_slots:
@@ -200,7 +202,7 @@ def load_chip(
                 if principled_node:
                     try:
                         principled_node.inputs["Base Color"].default_value = color
-                        modified_count += 1 
+                        modified_count += 1
                     except KeyError: pass # Ignore if no base color input
                     except Exception as e:
                         print(f"  Error setting Base Color for material '{mat.name}': {e}")
@@ -213,8 +215,8 @@ def load_chip(
 # ---------------- Single Chip Builder (used by pile builder) ----------------------
 
 def build_chip_from_config(
-    config: Union[Dict[str, Any], ChipModel]
-) -> Optional[bpy.types.Object]:
+    config: dict[str, Any] | ChipModel
+) -> bpy.types.Object | None:
     """
     Loads and configures a single chip based on a ChipModel or dictionary config.
 
@@ -237,9 +239,9 @@ def build_chip_from_config(
 
     blend_file = chip_model.blend_file_path or _DEFAULT_CHIPS_BLEND_FILE
     scale_input = chip_model.scale
-    if isinstance(scale_input, (int, float)):
+    if isinstance(scale_input, int | float):
         scale_tuple = (float(scale_input), float(scale_input), float(scale_input))
-    elif isinstance(scale_input, (list, tuple)) and len(scale_input) == 3:
+    elif isinstance(scale_input, list | tuple) and len(scale_input) == 3:
          scale_tuple = tuple(float(v) for v in scale_input)
     else:
          print(f"Error: Invalid scale format '{scale_input}'. Using default (1,1,1).")
@@ -257,8 +259,8 @@ def build_chip_from_config(
 # ---------------- Chip Pile Builder ---------------------------------------------
 
 def build_pile_from_config(
-    config: Union[Dict[str, Any], ChipPileModel]
-) -> List[bpy.types.Object]:
+    config: dict[str, Any] | ChipPileModel
+) -> list[bpy.types.Object]:
     """
     Builds a pile (stack) of chips based on a configuration.
 
@@ -283,7 +285,7 @@ def build_pile_from_config(
         print(f"Setting random seed to: {pile_model.random_seed}")
         random.seed(pile_model.random_seed)
 
-    # --- Measure Chip Dimensions --- 
+    # --- Measure Chip Dimensions ---
     chip_height = None
     chip_width = None
     temp_chip_obj = None
@@ -300,7 +302,7 @@ def build_pile_from_config(
         temp_chip_obj = build_chip_from_config(measure_config)
         if not temp_chip_obj:
             raise RuntimeError("Failed to create temporary chip for measurement.")
-        
+
         # Ensure dimensions are up-to-date
         bpy.context.view_layer.update()
         chip_height = temp_chip_obj.dimensions.z
@@ -314,19 +316,19 @@ def build_pile_from_config(
         print(f"Error measuring chip dimensions: {e}")
         return [] # Cannot proceed without dimensions
     finally:
-        # --- Clean up temporary chip --- 
+        # --- Clean up temporary chip ---
         if temp_chip_obj:
             try:
                  bpy.data.objects.remove(temp_chip_obj, do_unlink=True)
                  print("Cleaned up temporary measurement chip.")
             except Exception as e_clean:
                  print(f"Error cleaning up temporary chip: {e_clean}")
-    
+
     if chip_height is None or chip_width is None:
          print("Error: Failed to determine chip dimensions.")
          return []
 
-    # --- Build the Pile --- 
+    # --- Build the Pile ---
     created_chips = []
     pile_base_location = pile_model.location
     max_spread_radius = pile_model.spread_factor * chip_width * 0.1 # 10% of width at max spread
@@ -335,7 +337,7 @@ def build_pile_from_config(
     for i in range(pile_model.n_chips):
         # Calculate position for this chip
         z_pos = pile_base_location[2] + (i * (chip_height + pile_model.vertical_gap))
-        
+
         x_offset = 0.0
         y_offset = 0.0
         if pile_model.spread_factor > 0:
@@ -343,9 +345,9 @@ def build_pile_from_config(
             angle = random.uniform(0, 2 * math.pi)
             x_offset = radius * math.cos(angle)
             y_offset = radius * math.sin(angle)
-            
+
         current_location = (pile_base_location[0] + x_offset, pile_base_location[1] + y_offset, z_pos)
-        
+
         # Create config for this specific chip instance
         chip_instance_config = pile_model.base_chip_config
         if isinstance(chip_instance_config, ChipModel):
@@ -353,7 +355,7 @@ def build_pile_from_config(
         chip_instance_config = chip_instance_config.copy()
         chip_instance_config['location'] = current_location
         # Ensure scale/color/etc from base are preserved unless overridden
-        
+
         # Build the chip
         chip_obj = build_chip_from_config(chip_instance_config)
         if chip_obj:
@@ -405,7 +407,7 @@ if __name__ == "__main__":
         "camera": {"distance": 3.0, "angle": 50}, # Adjust for piles
         "lighting": {"lighting": "medium"},
         "table": {"diameter": 1.2, "felt_color": (0.2, 0.5, 0.2, 1.0)},
-        "render": {"engine": "CYCLES", "samples": 64} 
+        "render": {"engine": "CYCLES", "samples": 64}
     }
     # --- End Configuration ---
 
@@ -432,7 +434,7 @@ if __name__ == "__main__":
                     print(f"Failed to build pile {i+1}.")
                     all_piles_built = False
                     # break # Optionally stop if a pile fails
-            
+
             if not all_created_objects:
                  print("Error: No chips were successfully created in any pile.")
                  all_piles_built = False
@@ -450,4 +452,4 @@ if __name__ == "__main__":
         except Exception as e:
             print(f"An error occurred during the main execution: {e}")
             import traceback
-            traceback.print_exc() 
+            traceback.print_exc()

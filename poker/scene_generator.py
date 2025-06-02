@@ -1,13 +1,14 @@
-import bpy
-import random
-import os
-import sys
+import logging  # Added logging
 import math
-import mathutils # Added for math utilities like Vector
-from typing import Union, List, Dict, Any, Optional, Tuple
-import logging # Added logging
-import traceback # Added traceback
+import os
+import random
+import sys
+import traceback  # Added traceback
 from pathlib import Path
+from typing import Any
+
+import bpy
+import mathutils  # Added for math utilities like Vector
 
 # Ensure workspace root is in path for sibling imports
 workspace_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
@@ -15,15 +16,17 @@ if workspace_root not in sys.path:
     sys.path.append(workspace_root)
 
 # Models and Builders
+from Noise.set_noise_config import build_noise_from_config  # Import noise module
+from poker.card_overlap_builder import (
+    build_card_overlap_layout_from_config,  # Import the overlap builder
+)
 from poker.config.models import PokerSceneModel
-from poker.load_card import PokerCardLoader, _POKER_DECK_BLEND_FILE
+from poker.generate_legend import generate_poker_legend
+from poker.load_card import _POKER_DECK_BLEND_FILE, PokerCardLoader
 from poker.player_builder import build_player_from_config
 from poker.river_builder import build_river_from_config
 from scene_setup.general_setup import build_setup_from_config
-from poker.generate_legend import generate_poker_legend
-from poker.card_overlap_builder import build_card_overlap_layout_from_config # Import the overlap builder
-from Noise.set_noise_config import build_noise_from_config # Import noise module
-from scene_setup.grid import add_grid_to_image_file # Added for drawing grid
+from scene_setup.grid import add_grid_to_image_file  # Added for drawing grid
 
 logger = logging.getLogger(__name__) # Added logger instance
 
@@ -57,7 +60,7 @@ def world_to_camera_view(scene, obj, coord):
     z = -co_local.z
 
     camera = obj.data
-    frame = [v for v in camera.view_frame(scene=scene)[:3]]
+    frame = list(camera.view_frame(scene=scene)[:3])
     if camera.type != 'ORTHO':
         if z == 0.0:
             return Vector((0.5, 0.5, 0.0))
@@ -74,7 +77,7 @@ def world_to_camera_view(scene, obj, coord):
 
 
 
-def get_object_pixel_bbox(scene: bpy.types.Scene, camera: bpy.types.Object, obj: bpy.types.Object, rendered_width: int, rendered_height: int) -> Optional[Tuple[int, int, int, int]]:
+def get_object_pixel_bbox(scene: bpy.types.Scene, camera: bpy.types.Object, obj: bpy.types.Object, rendered_width: int, rendered_height: int) -> tuple[int, int, int, int] | None:
     """
     Calculates the 2D pixel bounding box of an object in the rendered image.
 
@@ -117,11 +120,11 @@ def get_object_pixel_bbox(scene: bpy.types.Scene, camera: bpy.types.Object, obj:
         # Convert [0,1] range to pixel coordinates
         px = int(round(co.x * rendered_width))
         py = int(round(co.y * rendered_height))
-        
-        # Blender's (0,0) for image coordinates is bottom-left, 
+
+        # Blender's (0,0) for image coordinates is bottom-left,
         # but often image processing top-left. We'll use Blender's standard for now.
         # If top-left is needed, py = rendered_height - py
-        
+
         min_x = min(min_x, px)
         max_x = max(max_x, px)
         min_y = min(min_y, py)
@@ -141,24 +144,24 @@ def get_object_pixel_bbox(scene: bpy.types.Scene, camera: bpy.types.Object, obj:
 
 
 def generate_poker_scene_from_config(
-    scene_model: Union[Dict[str, Any], PokerSceneModel],
-    output_dir: str, 
+    scene_model: dict[str, Any] | PokerSceneModel,
+    output_dir: str,
     base_filename: str
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """
-    Generates a poker scene, renders it to an 'img' subdir, and saves legends 
+    Generates a poker scene, renders it to an 'img' subdir, and saves legends
     to 'legend_txt' and 'legend_json' subdirs within the output_dir.
 
     Args:
         scene_model: Resolved PokerSceneModel instance or config dict.
-        output_dir: The base directory where subdirs for img, legend_txt, 
+        output_dir: The base directory where subdirs for img, legend_txt,
                     and legend_json will be created.
         base_filename: Base filename for image and legends.
 
     Returns:
         A dictionary containing generation results:
         {
-            'image_path': Optional[str], 
+            'image_path': Optional[str],
             'legend_txt_path': Optional[str],
             'legend_json_path': Optional[str],
             'final_scene_config': Optional[Dict],
@@ -166,16 +169,16 @@ def generate_poker_scene_from_config(
             'created_objects': Dict[str, List[bpy.types.Object]]
         }
     """
-    all_loaded_cards: List[bpy.types.Object] = []
-    all_loaded_chips: List[bpy.types.Object] = []
-    config_model: Optional[PokerSceneModel] = None
-    rendered_image_path: Optional[str] = None
-    legend_txt_path: Optional[str] = None 
-    legend_json_path: Optional[str] = None 
-    final_config_dict: Optional[Dict[str, Any]] = None
-    noise_result: Optional[Dict[str, Any]] = None
-    card_grid_locations: Dict[str, Dict[str, Any]] = {} # To store card grid locations
-    
+    all_loaded_cards: list[bpy.types.Object] = []
+    all_loaded_chips: list[bpy.types.Object] = []
+    config_model: PokerSceneModel | None = None
+    rendered_image_path: str | None = None
+    legend_txt_path: str | None = None
+    legend_json_path: str | None = None
+    final_config_dict: dict[str, Any] | None = None
+    noise_result: dict[str, Any] | None = None
+    card_grid_locations: dict[str, dict[str, Any]] = {} # To store card grid locations
+
     # Define base output path and subdirectories
     base_output_path = Path(output_dir)
     img_output_dir_path = base_output_path / "img"
@@ -188,7 +191,7 @@ def generate_poker_scene_from_config(
         logger.error(f"Failed to create image output directory '{img_output_dir_path}': {e}")
         return { # Return empty structure on directory failure
             'image_path': None, 'legend_txt_path': None, 'legend_json_path': None,
-            'final_scene_config': None, 'noise_config': None, 
+            'final_scene_config': None, 'noise_config': None,
             'created_objects': {'cards': [], 'chips': []},
             'card_grid_locations': {}
         }
@@ -204,11 +207,11 @@ def generate_poker_scene_from_config(
 
         final_config_dict = config_model.to_dict()
         logger.info(f"--- Generating Poker Scene: {config_model.n_players} players for {base_filename} ---")
-        
+
         # Generate Legends (passing only base output dir)
         logger.info(f"Generating legends for {base_filename} (inside {output_dir})...")
         legend_txt_path, legend_json_path = generate_poker_legend(
-            scene_model=config_model, 
+            scene_model=config_model,
             output_dir=str(base_output_path), # Pass base dir
             base_filename=base_filename
         )
@@ -237,7 +240,7 @@ def generate_poker_scene_from_config(
         loader_args['blend_file_path'] = blend_file_to_use
         card_loader = PokerCardLoader(**loader_args)
         logger.debug(f"Using deck blend file: {blend_file_to_use}")
-        
+
         # 5. Build General Card Overlap Layout (if configured)
         logger.info("Checking for general card overlap layout config...")
         if config_model.card_overlap_config:
@@ -259,19 +262,19 @@ def generate_poker_scene_from_config(
             logger.info("No players defined or generated in configuration.")
         else:
             # Iterate over the resolved player list
-            for i, player_conf in enumerate(resolved_players):
+            for _i, player_conf in enumerate(resolved_players):
                 # player_conf is already guaranteed to be a PlayerModel instance
                 # due to the logic in __post_init__
 
                 player_id_str = player_conf.player_id # Use player_id from model
                 logger.info(f"Building assets for {player_id_str}...")
-                
+
                 # Call the standalone function from player_builder.py
                 created_player_objects = build_player_from_config(
                     config=player_conf, # Pass the PlayerModel instance directly
                     card_loader=card_loader
-                ) 
-                
+                )
+
                 # Collect objects
                 all_loaded_cards.extend(created_player_objects.get('cards', []))
                 all_loaded_chips.extend(created_player_objects.get('chips', []))
@@ -287,13 +290,13 @@ def generate_poker_scene_from_config(
             all_loaded_cards.extend(community_cards_objects)
         else:
             logger.info("No community cards defined or generated in configuration.")
-            
+
         # 8. Apply noise effects if provided
         logger.info("Checking for noise configuration...")
         if config_model.noise_config is not None:
             # Get the table object from setup_info
             table_object = setup_info.get("table", {}).get("object")
-            
+
             # Apply noise configuration
             logger.info(f"Applying noise effects with config: {config_model.noise_config}")
             try:
@@ -308,7 +311,7 @@ def generate_poker_scene_from_config(
         # 9. Render the Scene
         logger.info("Preparing to render scene...")
         render_config = config_model.scene_setup.get('render', {})
-        img_extension = '.png' 
+        img_extension = '.png'
         # MODIFIED: Save image to 'img' subdirectory
         abs_output_path = img_output_dir_path / f"{base_filename}{img_extension}"
         logger.info(f"Render output path set to: {abs_output_path}")
@@ -375,7 +378,7 @@ def generate_poker_scene_from_config(
         if rendered_image_path and grid_config_for_calc:
             if isinstance(grid_config_for_calc, dict) and not granularity: # If it was a dict, get granularity from it
                 granularity = grid_config_for_calc.get('granularity', 0)
-            
+
             # Ensure granularity is now set if grid_config_for_calc was valid
             if not granularity and hasattr(grid_config_for_calc, 'granularity'): # Check if it was an object after all
                  granularity = grid_config_for_calc.granularity
@@ -395,22 +398,22 @@ def generate_poker_scene_from_config(
                         if not card_obj or not hasattr(card_obj, 'name'):
                             logger.warning("Skipping invalid card object in all_loaded_cards.")
                             continue
-                        
+
                         pixel_bbox = get_object_pixel_bbox(scene, camera, card_obj, rendered_width, rendered_height)
                         if pixel_bbox:
                             min_x_px, min_y_px, max_x_px, max_y_px = pixel_bbox
-                            
+
                             # Determine grid cells the card overlaps
                             # Note: Blender pixel coords are (0,0) at bottom-left.
                             # If grid drawing assumes (0,0) top-left, y-coordinates need inversion for cell mapping.
                             # For now, assume grid drawing also uses bottom-left (0,0) or pixel data access handles it.
-                            
+
                             start_col = math.floor(min_x_px / cell_width)
                             end_col = math.floor(max_x_px / cell_width)
                             # For y-coordinates, Blender y increases upwards.
                             # If grid is drawn from top (row 0) to bottom, then convert Blender y to grid row.
                             # Let's assume row 0 is at the bottom for consistency with Blender pixel y for now.
-                            start_row = math.floor(min_y_px / cell_height) 
+                            start_row = math.floor(min_y_px / cell_height)
                             end_row = math.floor(max_y_px / cell_height)
 
                             # Ensure indices are within bounds
@@ -418,12 +421,12 @@ def generate_poker_scene_from_config(
                             end_col = max(0, min(end_col, granularity - 1))
                             start_row = max(0, min(start_row, granularity - 1))
                             end_row = max(0, min(end_row, granularity - 1))
-                            
+
                             occupied_cells = []
                             for r in range(start_row, end_row + 1):
                                 for c in range(start_col, end_col + 1):
                                     occupied_cells.append((r, c))
-                            
+
                             card_grid_locations[card_obj.name] = {
                                 "pixel_bbox": (min_x_px, min_y_px, max_x_px, max_y_px),
                                 "grid_cells": occupied_cells,
@@ -485,7 +488,7 @@ def generate_poker_scene_from_config(
         'card_grid_locations': card_grid_locations # Add new info to results
     }
 
-# --- Test Section --- 
+# --- Test Section ---
 if __name__ == "__main__":
 
     # Setup basic logging for the test
@@ -494,7 +497,7 @@ if __name__ == "__main__":
     logger.info("--- Running Poker Scene Generator Test ---")
 
     # Define default table height for use in test config locations
-    table_height = 0.9 
+    table_height = 0.9
 
     # --- Example Chip Configs (for reuse in players) ---
     base_chip_blue = {"chip_object_name": "Cylinder001", "scale": 0.06, "color": (0.1, 0.2, 0.8, 1)}
@@ -515,7 +518,7 @@ if __name__ == "__main__":
         "random_seed": 1002
     }
     # --- End Chip Configs ---
-    
+
     # Define test output parameters
     test_output_dir = "poker/img/test_output"
     test_base_filename = "poker_scene_test_render"
@@ -529,8 +532,8 @@ if __name__ == "__main__":
             "camera": {"distance": 3.7, "angle": 72, "horizontal_angle": 0}, # Adjusted distance
             "lighting": {"lighting": "medium"},
             "table": {
-                "shape": "rectangular", 
-                "width": 1.5, 
+                "shape": "rectangular",
+                "width": 1.5,
                 "length": 2.4,
                 "felt_color": (0.1, 0.4, 0.15, 1.0)
             },
@@ -539,7 +542,7 @@ if __name__ == "__main__":
                 "samples": 12, # Reduced samples for faster test
                 "resolution": {"width": 512, "height": 384}, # Smaller resolution for test
                 # Output path is now constructed by the function based on args
-                # "output_path": "poker/img/poker_scene_6_player_v2_test.png", 
+                # "output_path": "poker/img/poker_scene_6_player_v2_test.png",
                 "gpus_enabled" : False,
             },
             "grid": { # Added grid configuration
@@ -548,86 +551,86 @@ if __name__ == "__main__":
                 "line_color_rgba": (0.0, 0.0, 0.0, 0.8)
             }
         },
-        "players": [ 
-            { 
+        "players": [
+            {
                 'player_id': 'Alice',
                 'hand_config': {
-                    'card_names': ['AS'], 
-                    'n_cards': 1, 
-                    'location': (-0.6, 0.0, table_height + 0.01), 
-                    'scale': 0.1, 
-                    'spread_factor_h': 0.2, 
-                    'spread_factor_v': 0.05, 
-                    'n_verso': 0, 
+                    'card_names': ['AS'],
+                    'n_cards': 1,
+                    'location': (-0.6, 0.0, table_height + 0.01),
+                    'scale': 0.1,
+                    'spread_factor_h': 0.2,
+                    'spread_factor_v': 0.05,
+                    'n_verso': 0,
                     'random_seed': 101
                 },
-                'chip_area_config': chip_area_1 
+                'chip_area_config': chip_area_1
             },
-            { 
+            {
                 'player_id': 'Bob',
                 'hand_config': {
-                    'card_names': ['KD', 'KS'], 
-                    'n_cards': 2, 
-                    'location': (0.6, 0.0, table_height + 0.01), 
-                    'scale': 0.1, 
+                    'card_names': ['KD', 'KS'],
+                    'n_cards': 2,
+                    'location': (0.6, 0.0, table_height + 0.01),
+                    'scale': 0.1,
                     'spread_factor_h': 0.3,
                     'spread_factor_v': 0.1,
                     'n_verso': 1,
                     'verso_loc': 'random',
                     'random_seed': 102
                 },
-                'chip_area_config': chip_area_2 
+                'chip_area_config': chip_area_2
             },
-            { 
+            {
                 'player_id': 'Charlie',
                 'hand_config': {
-                    'card_names': ['QD', 'QS'], 
-                    'n_cards': 2, 
-                    'location': (0.0, 1.0, table_height + 0.01), 
-                    'scale': 0.1, 
+                    'card_names': ['QD', 'QS'],
+                    'n_cards': 2,
+                    'location': (0.0, 1.0, table_height + 0.01),
+                    'scale': 0.1,
                     'spread_factor_h': 0.2,
                     'spread_factor_v': 0.3,
                     'n_verso': 2,
                     'random_seed': 103
                 },
             },
-            { 
+            {
                 'player_id': 'Diana',
                 'hand_config': {
-                    'card_names': ['JD', 'JS'], 
-                    'n_cards': 2, 
-                    'location': (0.0, -1.0, table_height + 0.01), 
-                    'scale': 0.1, 
-                    'spread_factor_h': 0.2, 
-                    'spread_factor_v': 0.3, 
-                    'n_verso': 1, 
+                    'card_names': ['JD', 'JS'],
+                    'n_cards': 2,
+                    'location': (0.0, -1.0, table_height + 0.01),
+                    'scale': 0.1,
+                    'spread_factor_h': 0.2,
+                    'spread_factor_v': 0.3,
+                    'n_verso': 1,
                     'verso_loc': 'ordered',
                     'random_seed': 104
                 }
             },
-            { 
+            {
                 'player_id': 'Eve',
                 'hand_config': {
-                    'card_names': ['10D', '10S'], 
-                    'n_cards': 2, 
-                    'location': (-0.5, 0.6, table_height + 0.01), 
-                    'scale': 0.1, 
+                    'card_names': ['10D', '10S'],
+                    'n_cards': 2,
+                    'location': (-0.5, 0.6, table_height + 0.01),
+                    'scale': 0.1,
                     'spread_factor_h': 0.9,
-                    'spread_factor_v': 0.1, 
+                    'spread_factor_v': 0.1,
                     'n_verso': 1,
                     'random_seed': 105
                 },
-                'chip_area_config': chip_area_1 
+                'chip_area_config': chip_area_1
             },
-            { 
+            {
                 'player_id': 'Frank',
                 'hand_config': {
-                    'card_names': ['9D', '9S'], 
-                    'n_cards': 2, 
-                    'location': (0.6, -0.7, table_height + 0.01), 
-                    'scale': 0.1, 
-                    'spread_factor_h': 0.2, 
-                    'spread_factor_v': 0.2, 
+                    'card_names': ['9D', '9S'],
+                    'n_cards': 2,
+                    'location': (0.6, -0.7, table_height + 0.01),
+                    'scale': 0.1,
+                    'spread_factor_h': 0.2,
+                    'spread_factor_v': 0.2,
                     'n_verso': 1,
                     'random_seed': 106
                 }
@@ -635,7 +638,7 @@ if __name__ == "__main__":
         ],
         "community_cards": {
             'card_names': ['4C', '4H', '4D', '4S', '5C'], 'n_cards': 5,
-            'start_location': (-0.3, 0, 0.9 + 0.01), 
+            'start_location': (-0.3, 0, 0.9 + 0.01),
             'scale': 0.1,
             'n_verso': 0,
             'card_gap': {'base_gap_x': 0.15, 'base_gap_y': 0.005, 'random_gap': False} # Added base_gap_y for model compliance
@@ -653,11 +656,11 @@ if __name__ == "__main__":
 
     # Check results
     if generation_result and generation_result.get('image_path'):
-        logger.info(f"Scene generation and rendering likely succeeded.")
+        logger.info("Scene generation and rendering likely succeeded.")
         logger.info(f"Image saved to: {generation_result['image_path']}")
         # Further checks could be added here (e.g., object counts)
     else:
         logger.error("Scene generation or rendering failed.")
         sys.exit(1)
 
-    logger.info("--- Poker Scene Generator Test Finished ---") 
+    logger.info("--- Poker Scene Generator Test Finished ---")

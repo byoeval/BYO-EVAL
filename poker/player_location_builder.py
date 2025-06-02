@@ -1,7 +1,6 @@
-from dataclasses import dataclass, field
-from typing import Optional, Dict, Any, List, Tuple, TYPE_CHECKING
-import math
 import logging
+import math
+from typing import TYPE_CHECKING, Any
 
 # Conditional import for type hinting to avoid circular dependency
 if TYPE_CHECKING:
@@ -12,9 +11,9 @@ logger = logging.getLogger(__name__)
 def calculate_player_locations(
     distribution_config: 'PlayerDistribution',
     num_players_to_place: int,
-    table_conf: Dict[str, Any],
+    table_conf: dict[str, Any],
     table_height: float
-) -> List[Tuple[float, float, float]]:
+) -> list[tuple[float, float, float]]:
     """
     Calculates the (x, y, z) locations for players based on distribution settings
     and table configuration.
@@ -151,4 +150,4 @@ def calculate_player_locations(
 
     return locations
 
-# Removed build_player_locations_from_config as it's now redundant 
+# Removed build_player_locations_from_config as it's now redundant

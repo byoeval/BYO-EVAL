@@ -1,6 +1,6 @@
 from dataclasses import dataclass, field
-from typing import Tuple, Union, Optional, Dict, Any, List
 from enum import Enum
+from typing import Any
 
 
 class TableShape(Enum):
@@ -21,17 +21,17 @@ class TableTexture(Enum):
 @dataclass
 class MaterialModel:
     """Base model for material properties."""
-    color: Union[str, Tuple[float, float, float, float]] = (0.8, 0.8, 0.8, 1.0)
+    color: str | tuple[float, float, float, float] = (0.8, 0.8, 0.8, 1.0)
     roughness: float = 0.5
-    material_name: Optional[str] = None
-    custom_material: Optional[Any] = None
-    
+    material_name: str | None = None
+    custom_material: Any | None = None
+
     @classmethod
-    def from_dict(cls, config: Dict[str, Any]) -> 'MaterialModel':
+    def from_dict(cls, config: dict[str, Any]) -> 'MaterialModel':
         """Create a MaterialModel from a dictionary."""
         if not isinstance(config, dict):
             config = {}
-            
+
         default_instance = cls()
         return cls(
             color=config.get("color", default_instance.color),
@@ -39,8 +39,8 @@ class MaterialModel:
             material_name=config.get("material_name", default_instance.material_name),
             custom_material=config.get("custom_material", default_instance.custom_material)
         )
-    
-    def to_dict(self) -> Dict[str, Any]:    
+
+    def to_dict(self) -> dict[str, Any]:
         """Convert the model to a dictionary format."""
         return {
             "color": self.color,
@@ -62,20 +62,20 @@ class CameraModel:
 
     ANGLE_PRESETS = {
         "none": 90.0,  # Looking straight down
-        "low": 80.0, 
+        "low": 80.0,
         "medium": 60.0,
         "high": 30.0  # More horizontal view
     }
 
-    distance: Union[str, float] = "medium"  # Can be "low", "medium", "high" or a float value
-    angle: Union[str, float] = "medium"  # Can be "low", "medium", "high" or a float value
+    distance: str | float = "medium"  # Can be "low", "medium", "high" or a float value
+    angle: str | float = "medium"  # Can be "low", "medium", "high" or a float value
     horizontal_angle: float = 0.0
     randomize_distance: bool = False
     randomize_distance_percentage: float = 0.1
     randomize_angle: bool = False
     randomize_angle_percentage: float = 0.1
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert the model to a dictionary format."""
         return {
             "distance": self.distance,
@@ -86,13 +86,13 @@ class CameraModel:
             "randomize_angle": self.randomize_angle,
             "randomize_angle_percentage": self.randomize_angle_percentage
         }
-        
+
     @classmethod
-    def from_dict(cls, config: Dict[str, Any]) -> 'CameraModel':
+    def from_dict(cls, config: dict[str, Any]) -> 'CameraModel':
         """Create a CameraModel from a dictionary."""
         if not isinstance(config, dict):
             config = {}
-            
+
         default_instance = cls()
         return cls(
             distance=config.get("distance", default_instance.distance),
@@ -115,7 +115,7 @@ class TableModel:
     texture: TableTexture = TableTexture.WOOD
     material: MaterialModel = field(default_factory=MaterialModel)
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert the model to a dictionary format."""
         # Only include material if it's a custom material
         material = None
@@ -130,20 +130,20 @@ class TableModel:
             "texture": self.texture.value,
             "material": material
         }
-        
+
     @classmethod
-    def from_dict(cls, config: Dict[str, Any]) -> 'TableModel':
+    def from_dict(cls, config: dict[str, Any]) -> 'TableModel':
         """Create a TableModel from a dictionary."""
         if not isinstance(config, dict):
             config = {}
-            
+
         default_instance = cls()
-        
+
         # Handle material separately
         material_config = config.get("material", {})
         if not isinstance(material_config, dict):
             material_config = {}
-            
+
         return cls(
             shape=TableShape(config.get("shape", default_instance.shape.value)),
             length=config.get("length", default_instance.length),
@@ -157,31 +157,31 @@ class TableModel:
 @dataclass
 class FloorModel:
     """Model for floor configuration."""
-    color: Tuple[float, float, float, float] = (0.8, 0.8, 0.8, 1.0)
+    color: tuple[float, float, float, float] = (0.8, 0.8, 0.8, 1.0)
     roughness: float = 0.5
     material: MaterialModel = field(default_factory=MaterialModel)
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert the model to a dictionary format."""
         return {
             "color": self.color,
             "roughness": self.roughness,
             "material": self.material.to_dict()
         }
-        
+
     @classmethod
-    def from_dict(cls, config: Dict[str, Any]) -> 'FloorModel':
+    def from_dict(cls, config: dict[str, Any]) -> 'FloorModel':
         """Create a FloorModel from a dictionary."""
         if not isinstance(config, dict):
             config = {}
-            
+
         default_instance = cls()
-        
+
         # Handle material separately
         material_config = config.get("material", {})
         if not isinstance(material_config, dict):
             material_config = {}
-            
+
         return cls(
             color=config.get("color", default_instance.color),
             roughness=config.get("roughness", default_instance.roughness),
@@ -192,24 +192,24 @@ class FloorModel:
 @dataclass
 class BackgroundModel:
     """Model for background configuration."""
-    color: Tuple[float, float, float, float] = (0.5, 0.5, 0.5, 1.0)
+    color: tuple[float, float, float, float] = (0.5, 0.5, 0.5, 1.0)
     use_hdri: bool = False
-    hdri_path: Optional[str] = None
+    hdri_path: str | None = None
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert the model to a dictionary format."""
         return {
             "color": self.color,
             "use_hdri": self.use_hdri,
             "hdri_path": self.hdri_path
         }
-        
+
     @classmethod
-    def from_dict(cls, config: Dict[str, Any]) -> 'BackgroundModel':
+    def from_dict(cls, config: dict[str, Any]) -> 'BackgroundModel':
         """Create a BackgroundModel from a dictionary."""
         if not isinstance(config, dict):
             config = {}
-            
+
         default_instance = cls()
         return cls(
             color=config.get("color", default_instance.color),
@@ -230,12 +230,12 @@ class LightingModel:
         "very_high": 2.0  # 200% of standard lighting
     }
 
-    lighting: Union[str, float] = "medium"  # Can be "very_low", "low", "medium", "high", "very_high" or a float multiplier
+    lighting: str | float = "medium"  # Can be "very_low", "low", "medium", "high", "very_high" or a float multiplier
     key_light_power: float = 300.0
     fill_light_power: float = 50.0
     back_light_power: float = 50.0
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert the model to a dictionary format."""
         return {
             "lighting": self.lighting,
@@ -243,13 +243,13 @@ class LightingModel:
             "fill_light_power": self.fill_light_power,
             "back_light_power": self.back_light_power
         }
-        
+
     @classmethod
-    def from_dict(cls, config: Dict[str, Any]) -> 'LightingModel':
+    def from_dict(cls, config: dict[str, Any]) -> 'LightingModel':
         """Create a LightingModel from a dictionary."""
         if not isinstance(config, dict):
             config = {}
-            
+
         default_instance = cls()
         return cls(
             lighting=config.get("lighting", default_instance.lighting),
@@ -277,7 +277,7 @@ class ResolutionModel:
     randomize: bool = False
     randomize_percentage: float = 0.1
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert the model to a dictionary format."""
         return {
             "width": self.width,
@@ -288,13 +288,13 @@ class ResolutionModel:
             "randomize": self.randomize,
             "randomize_percentage": self.randomize_percentage
         }
-        
+
     @classmethod
-    def from_dict(cls, config: Dict[str, Any]) -> 'ResolutionModel':
+    def from_dict(cls, config: dict[str, Any]) -> 'ResolutionModel':
         """Create a ResolutionModel from a dictionary."""
         if not isinstance(config, dict):
             config = {}
-            
+
         default_instance = cls()
         return cls(
             width=config.get("width", default_instance.width),
@@ -315,11 +315,11 @@ class RenderModel:
     exposure: float = 0.0
     file_format: str = "PNG"
     resolution: ResolutionModel = field(default_factory=ResolutionModel)
-    output_path: Optional[str] = None
+    output_path: str | None = None
     gpu_enabled: bool = True
-    gpus: Optional[List[int]] = None
+    gpus: list[int] | None = None
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert the model to a dictionary format."""
         base_dict = {
             "engine": self.engine,
@@ -335,13 +335,13 @@ class RenderModel:
         return base_dict
 
     @classmethod
-    def from_dict(cls, config: Dict[str, Any]) -> 'RenderModel':
+    def from_dict(cls, config: dict[str, Any]) -> 'RenderModel':
         """Create a RenderModel from a dictionary."""
         if not isinstance(config, dict):
             config = {}
-            
+
         default_instance = cls()
-        
+
         # Handle resolution separately
         resolution_config = {}
         if "resolution_x" in config:
@@ -352,7 +352,7 @@ class RenderModel:
             resolution_config["width"] = config.pop("width")
         if "height" in config:
             resolution_config["height"] = config.pop("height")
-            
+
         return cls(
             engine=config.get("engine", default_instance.engine),
             samples=config.get("samples", default_instance.samples),
@@ -370,9 +370,9 @@ class GridModel:
     """Model for grid configuration."""
     granularity: int = 10  # Renamed from n_divisions
     line_thickness: int = 1
-    line_color_rgba: Tuple[float, float, float, float] = (0.0, 0.0, 0.0, 0.8)  # Default to black
+    line_color_rgba: tuple[float, float, float, float] = (0.0, 0.0, 0.0, 0.8)  # Default to black
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert the model to a dictionary format."""
         return {
             "granularity": self.granularity,
@@ -381,11 +381,11 @@ class GridModel:
         }
 
     @classmethod
-    def from_dict(cls, config: Dict[str, Any]) -> 'GridModel':
+    def from_dict(cls, config: dict[str, Any]) -> 'GridModel':
         """Create a GridModel from a dictionary."""
         if not isinstance(config, dict):
             config = {}
-        
+
         default_instance = cls()
         return cls(
             granularity=config.get("granularity", default_instance.granularity),
@@ -406,7 +406,7 @@ class SceneSetupModel:
     render: RenderModel = field(default_factory=RenderModel)
     grid: GridModel = field(default_factory=GridModel)
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert the model to a dictionary format."""
         return {
             "camera": self.camera.to_dict(),
@@ -420,13 +420,13 @@ class SceneSetupModel:
         }
 
     @classmethod
-    def from_dict(cls, config: Dict[str, Any]) -> 'SceneSetupModel':
+    def from_dict(cls, config: dict[str, Any]) -> 'SceneSetupModel':
         """Create a SceneSetupModel from a dictionary."""
         if not isinstance(config, dict):
             config = {}
-            
+
         default_instance = cls()
-        
+
         return cls(
             camera=CameraModel.from_dict(config.get("camera", {})),
             table=TableModel.from_dict(config.get("table", {})),
@@ -436,4 +436,4 @@ class SceneSetupModel:
             resolution=ResolutionModel.from_dict(config.get("resolution", {})),
             render=RenderModel.from_dict(config.get("render", {})),
             grid=GridModel.from_dict(config.get("grid", {}))
-        ) 
+        )

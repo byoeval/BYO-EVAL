@@ -1,6 +1,6 @@
 import os
-from openai import AzureOpenAI
 
+from openai import AzureOpenAI
 
 
 def setup_environment(model_name="GPT41m"):

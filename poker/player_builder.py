@@ -1,32 +1,30 @@
-import bpy
-import random
-from mathutils import Vector, Euler
-from typing import Union, Dict, Any, List, Optional
+import os
 
 # Ensure workspace root is in path for sibling imports
 import sys
-import os
+from typing import Any
+
+import bpy
+from mathutils import Vector
+
 workspace_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
 if workspace_root not in sys.path:
     sys.path.append(workspace_root)
 
 # Poker specific models and builders
-from poker.config.models import PlayerModel
-from poker.load_card import PokerCardLoader # Import from correct location
-from poker.player_hand_builder import build_player_hand_from_config
 from poker.chip_area_builder import build_chip_area_from_config
-
+from poker.config.models import PlayerModel
+from poker.load_card import PokerCardLoader  # Import from correct location
+from poker.player_hand_builder import build_player_hand_from_config
 
 # Scene setup (for testing)
 from scene_setup.general_setup import build_setup_from_config
 
 
-
-
 def build_player_from_config(
-    config: Union[Dict[str, Any], PlayerModel],
+    config: dict[str, Any] | PlayerModel,
     card_loader: PokerCardLoader
-) -> Dict[str, List[bpy.types.Object]]:
+) -> dict[str, list[bpy.types.Object]]:
     """
     Builds a player's components (hand and chip area) based on a configuration.
     Uses standalone builder functions.
@@ -40,10 +38,10 @@ def build_player_from_config(
         {'cards': [card_objects], 'chips': [chip_objects]}
         Returns {'cards': [], 'chips': []} on error or if components are not defined.
     """
-    player_cards: List[bpy.types.Object] = []
-    player_chips: List[bpy.types.Object] = []
-    hand_center: Optional[Vector] = None
-    player_model: Optional[PlayerModel] = None
+    player_cards: list[bpy.types.Object] = []
+    player_chips: list[bpy.types.Object] = []
+    hand_center: Vector | None = None
+    player_model: PlayerModel | None = None
 
     try:
         if isinstance(config, dict):
@@ -60,7 +58,7 @@ def build_player_from_config(
             print("Building player hand...")
             # build_player_hand_from_config returns (list_of_cards, center_vector | None)
             hand_objects, hand_center = build_player_hand_from_config(
-                card_loader=card_loader, 
+                card_loader=card_loader,
                 hand_config=player_model.hand_config
             )
             if hand_objects:
@@ -81,7 +79,7 @@ def build_player_from_config(
             elif hasattr(player_model, 'hand_config') and player_model.hand_config.location:
                 print("Building chip area relative to player hand location (fallback due to missing hand center)...")
                 chip_area_ref_location = tuple(player_model.hand_config.location)
-            
+
             if chip_area_ref_location:
                  # Call the function from chip_area_builder.py
                  chip_objects = build_chip_area_from_config(
@@ -108,15 +106,15 @@ def build_player_from_config(
     return {'cards': player_cards, 'chips': player_chips}
 
 
-# --- Main execution block for testing --- 
+# --- Main execution block for testing ---
 if __name__ == "__main__":
     print("Running player_builder.py directly for testing.")
 
-    # --- Test Configuration --- 
+    # --- Test Configuration ---
     # Example Base Chip / Pile for Player
     player_base_chip = {
         "chip_object_name": "Cylinder001", # Use a name likely in default chip file
-        "scale": 0.12, 
+        "scale": 0.12,
         "color": (0.1, 0.1, 0.1, 1.0) # Black chip base
     }
     player_base_pile = {
@@ -160,9 +158,9 @@ if __name__ == "__main__":
         "camera": {"distance": 3.0, "angle": 50},
         "lighting": {"lighting": "medium"},
         "table": {"diameter": 1.5, "felt_color": (0.1, 0.4, 0.1, 1.0)},
-        "render": {"engine": "CYCLES", "samples": 64} 
+        "render": {"engine": "CYCLES", "samples": 64}
     }
-    # --- End Test Configuration --- 
+    # --- End Test Configuration ---
 
     if bpy.context is None:
         print("Error: Must run from within Blender.")
@@ -172,7 +170,7 @@ if __name__ == "__main__":
             print("Setting up scene...")
             build_setup_from_config(scene_setup_config)
             print("Scene setup done.")
-            
+
             print("Initializing card loader...")
             # Need to initialize card loader for the hand builder
             try:
@@ -181,14 +179,14 @@ if __name__ == "__main__":
                  print(f"Error: Default deck file not found. {e}")
                  raise # Stop test if deck is missing
             print("Card loader initialized.")
-            
+
             # Note: build_chip_area_from_config will use its internal logic
             # which relies on default chip file paths in poker/load_chip.py
             # No need to pass a chip_loader here.
 
             print("Building player...")
             player_objects = build_player_from_config(test_player_config, card_loader)
-            
+
             n_cards = len(player_objects.get('cards', []))
             n_chips = len(player_objects.get('chips', []))
 
@@ -205,8 +203,8 @@ if __name__ == "__main__":
                  print("Render complete.")
             else:
                  print("\nPlayer building failed or produced no objects.")
-                 
+
          except Exception as e:
             print(f"An error occurred during player builder testing: {e}")
             import traceback
-            traceback.print_exc() 
+            traceback.print_exc()

@@ -1,9 +1,9 @@
-from .pawn import create_pawn
-from .rook import create_rook
-from .knight import create_knight
 from .bishop import create_bishop
-from .queen import create_queen
 from .king import create_king
+from .knight import create_knight
+from .pawn import create_pawn
+from .queen import create_queen
+from .rook import create_rook
 
 __all__ = [
     'create_pawn',
@@ -12,4 +12,4 @@ __all__ = [
     'create_bishop',
     'create_queen',
     'create_king'
-] 
+]

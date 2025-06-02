@@ -1,33 +1,43 @@
-import os
-import sys # Add sys import
-import time
 import argparse  # Added for CLI argument parsing
-import yaml  # For YAML config loading
+import os
+import sys  # Add sys import
+import time
 from datetime import datetime
 from pathlib import Path
+from typing import Any
+
+import pandas as pd  # Added for DataFrame handling
+import yaml  # For YAML config loading
 from dotenv import load_dotenv
-from typing import Dict, Any, List, Tuple
-
-import pandas as pd # Added for DataFrame handling
-
 from rich.console import Console
-from rich.progress import Progress, SpinnerColumn, TextColumn, BarColumn, TaskProgressColumn, TimeRemainingColumn, TimeElapsedColumn
+from rich.progress import (
+    BarColumn,
+    Progress,
+    SpinnerColumn,
+    TaskProgressColumn,
+    TextColumn,
+    TimeElapsedColumn,
+    TimeRemainingColumn,
+)
 
 parent_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 if parent_dir not in sys.path:
     sys.path.insert(0, parent_dir)
 
 
-from evaluation_pipeline.get_vlm import get_vlm, VLMProvider, VLM # Import necessary components
-from src.create_dataframe import AnnotationDataset 
-from utils.utils import replace_predictions_with_words
 from evaluate_diagnose_dataset import evaluate_vlm_on_task
-
+from evaluation_pipeline.get_vlm import (  # Import necessary components
+    VLM,
+    VLMProvider,
+    get_vlm,
+)
+from src.create_dataframe import AnnotationDataset
+from utils.utils import replace_predictions_with_words
 
 # TODO:
 # - ALLOW A LIST OF REFOMULATE
 # - ALLOW A LIST OF PRE_PROMPT
-# - ALLOW MANUAL QUESTIONS 
+# - ALLOW MANUAL QUESTIONS
 
 
 console = Console()
@@ -37,26 +47,26 @@ class Diagnostic:
     A class to perform diagnostic tests on VLM anwers.
     """
     # Maps criteria keys to DataFrame column names and potential lambda functions for extraction
-    _criteria_to_df_map: Dict[str, Tuple[str, Any]] = {
+    _criteria_to_df_map: dict[str, tuple[str, Any]] = {
         # Common criteria for all games
         "camera_distance": ("camera", lambda x: x.get("distance") if isinstance(x, dict) else None),
         "camera_angle": ("camera", lambda x: x.get("angle") if isinstance(x, dict) else None),
         "camera_horizontal_angle": ("camera", lambda x: x.get("horizontal_angle") if isinstance(x, dict) else None),
         "blur": ("noise", lambda x: x.get("blur") if isinstance(x, dict) else None),
         "table_texture": ("noise", lambda x: x.get("table_texture") if isinstance(x, dict) else None),
-        
+
         # Chess-specific criteria
         "number": ("piece_number", None),
         "background": ("board", lambda x: x.get("board_pattern") if isinstance(x, dict) else None),
-        "types": ("pieces", lambda piece_list: ";".join(sorted(list(set(str(p.get('piece_type')) for p in piece_list if p and p.get('piece_type') is not None)))) if isinstance(piece_list, list) else ""),
-        "piece_types": ("piece_types", lambda types_set: ";".join(sorted(list(types_set))) if isinstance(types_set, set) else ""),
-        "piece_colors": ("piece_colors", lambda colors_set: ";".join(sorted(list(colors_set))) if isinstance(colors_set, set) else ""),
+        "types": ("pieces", lambda piece_list: ";".join(sorted({str(p.get('piece_type')) for p in piece_list if p and p.get('piece_type') is not None})) if isinstance(piece_list, list) else ""),
+        "piece_types": ("piece_types", lambda types_set: ";".join(sorted(types_set)) if isinstance(types_set, set) else ""),
+        "piece_colors": ("piece_colors", lambda colors_set: ";".join(sorted(colors_set)) if isinstance(colors_set, set) else ""),
         "piece_type_count": ("piece_types", lambda types_set: len(types_set) if isinstance(types_set, set) else 0),
         "board_rows": ("board", lambda x: x.get('board_rows') if isinstance(x, dict) else None),
         "board_columns": ("board", lambda x: x.get('board_columns') if isinstance(x, dict) else None),
         "board_pattern": ("board", lambda x: x.get('board_pattern') if isinstance(x, dict) else None),
         "board_location": ("board", lambda x: x.get('board_location') if isinstance(x, dict) else None),
-        
+
         # Poker-specific criteria
         "card_number": ("n_cards", None),  # Direct column access
         "pile_number": ("n_piles", None),  # Direct column access
@@ -66,7 +76,7 @@ class Diagnostic:
         "player_vertical_spread": ("player_vertical_spread", None),  # Direct column access
         "community_horizontal_spread": ("community_horizontal_spread", None),  # Direct column access
         "community_vertical_spread": ("community_vertical_spread", None),  # Direct column access
-        "card_types": ("card_types", lambda types_set: ";".join(sorted(list(types_set))) if isinstance(types_set, set) else ""),
+        "card_types": ("card_types", lambda types_set: ";".join(sorted(types_set)) if isinstance(types_set, set) else ""),
         "lighting": ("setup", lambda x: x.get('lighting') if isinstance(x, dict) else None),
         "table_shape": ("setup", lambda x: x.get('table', {}).get('shape') if isinstance(x, dict) else None),
         "table_width": ("setup", lambda x: x.get('table', {}).get('width') if isinstance(x, dict) else None),
@@ -75,7 +85,7 @@ class Diagnostic:
         "resolution_height": ("setup", lambda x: x.get('resolution', {}).get('height') if isinstance(x, dict) else None),
         "community_card_count": ("community_info", lambda x: x.get('n_cards') if isinstance(x, dict) else None),
         "community_cards": ("community_info", lambda x: ";".join(sorted(x.get('cards', []))) if isinstance(x, dict) else ""),
-        
+
         # Card overlap layout specific criteria
         "has_overlap_layout": ("has_overlap_layout", None),  # Direct column access
         "card_overlap_count": ("card_overlap_count", None),  # Direct column access
@@ -89,15 +99,15 @@ class Diagnostic:
 
     def __init__(self):
         # Potentially initialize with a full config or other parameters later
-        self.config: Dict[str, Any] = {}
+        self.config: dict[str, Any] = {}
         self.filtered_df: pd.DataFrame = pd.DataFrame()
 
     def filter_existing_content(
         self,
         dataset_path: Path,
-        filtering_config: Dict[str, Any],
+        filtering_config: dict[str, Any],
         max_images_per_level: int = None
-    ) -> Tuple[List[Path], List[Path], Dict[str, List[Any]]]:
+    ) -> tuple[list[Path], list[Path], dict[str, list[Any]]]:
         """
         Filters the DataFrame based on fixed variables and the current value of the variable under test.
         Also extracts the values of the 'variables_to_test' for each filtered image.
@@ -105,15 +115,15 @@ class Diagnostic:
 
         Args:
             dataset_path (Path): The path to the dataset folder.
-            filtering_config (Dict[str, Any]): Dictionary containing 'fixed_variables_exact', 
+            filtering_config (Dict[str, Any]): Dictionary containing 'fixed_variables_exact',
                                              'fixed_variables_range', 'variables_to_test', and 'game'.
             max_images_per_level (int, optional): Maximum number of images per unique combination of variables_to_test. Default is None (no limit).
 
         Returns:
-            Tuple[List[Path], List[Path], Dict[str, List[Any]]]: 
+            Tuple[List[Path], List[Path], Dict[str, List[Any]]]:
                 - A list of image Paths for the filtered images.
                 - A list of legend Paths for the filtered images.
-                - A dictionary where keys are from 'variables_to_test' and values are lists 
+                - A dictionary where keys are from 'variables_to_test' and values are lists
                   of corresponding data for each filtered image.
         """
         # Extract variables from filtering_config
@@ -137,7 +147,7 @@ class Diagnostic:
         df = dataset.get_dataframe()
         total_images = len(df)
         print("Total images: ", total_images)
-        
+
         filtered_df = df.copy()
 
         # DEBUG: Print types of pieces across all images
@@ -148,7 +158,7 @@ class Diagnostic:
                 first_row_piece_types = filtered_df.iloc[0]['piece_types']
                 print(f"Type of piece_types column: {type(first_row_piece_types)}")
                 print(f"Content of first row piece_types: {first_row_piece_types}")
-                
+
                 # Count images by number of piece types
                 piece_type_counts = {}
                 for _, row in filtered_df.iterrows():
@@ -157,11 +167,11 @@ class Diagnostic:
                     if count not in piece_type_counts:
                         piece_type_counts[count] = 0
                     piece_type_counts[count] += 1
-                
+
                 print("Distribution of images by number of piece types:")
                 for count, num_images in sorted(piece_type_counts.items()):
                     print(f"  {count} piece types: {num_images} images")
-                
+
                 # Test our filter function
                 accessor_fn = self._criteria_to_df_map["piece_type_count"][1]
                 print("\nTesting piece_type_count accessor function on first 5 rows:")
@@ -169,7 +179,7 @@ class Diagnostic:
                     piece_types = filtered_df.iloc[i]['piece_types']
                     count = accessor_fn(piece_types)
                     print(f"  Row {i}: piece_types={piece_types}, count={count}")
-                
+
                 # Count images that would pass our filter
                 min_count = 3
                 passing_images = 0
@@ -178,7 +188,7 @@ class Diagnostic:
                     count = accessor_fn(piece_types)
                     if count >= min_count:
                         passing_images += 1
-                
+
                 print(f"\nImages with {min_count}+ piece types (should match filter): {passing_images}")
             else:
                 print("DataFrame is empty, cannot check piece_types.")
@@ -192,11 +202,11 @@ class Diagnostic:
                 if col_name not in filtered_df.columns:
                     print(f"Warning: Column '{col_name}' for exact fixed variable '{variable_key}' not found. Skipping.")
                     continue
-                
+
                 series_to_filter = filtered_df[col_name]
                 if accessor_fn:
                     series_to_filter = series_to_filter.apply(accessor_fn)
-                
+
                 # Save number of rows before filtering for reporting
                 before_count = len(filtered_df)
                 filtered_df = filtered_df[series_to_filter == exact_value]
@@ -212,7 +222,7 @@ class Diagnostic:
                 if col_name not in filtered_df.columns:
                     print(f"Warning: Column '{col_name}' for range fixed variable '{variable_key}' not found. Skipping.")
                     continue
-                
+
                 series_to_filter = filtered_df[col_name]
                 if accessor_fn:
                     print(f"\nApplying accessor function for '{variable_key}' on column '{col_name}'")
@@ -220,26 +230,26 @@ class Diagnostic:
                     print(f"  Column type before accessor: {series_to_filter.dtype}")
                     if not filtered_df.empty:
                         print(f"  First few values before accessor: {series_to_filter.head(3).tolist()}")
-                    
+
                     # Apply accessor and capture result separately for debugging
                     series_to_filter = series_to_filter.apply(accessor_fn)
-                    
+
                     # Debug: Print after applying accessor
                     print(f"  Column type after accessor: {series_to_filter.dtype}")
                     if not filtered_df.empty:
                         print(f"  First few values after accessor: {series_to_filter.head(3).tolist()}")
-                
+
                 # Ensure series is numeric for range comparison, attempt conversion if not
                 try:
                     print(f"\nConverting series for '{variable_key}' to numeric for range filtering")
                     numeric_series = pd.to_numeric(series_to_filter, errors='coerce')
                     print(f"  Series after numeric conversion: {numeric_series.head(3).tolist() if not filtered_df.empty else 'empty'}")
                     print(f"  NaN values after conversion: {numeric_series.isna().sum()}")
-                    
+
                     if isinstance(value_range, list) and len(value_range) == 2:
                         min_val, max_val = value_range
                         print(f"  Filtering for range: {min_val} to {max_val}")
-                        
+
                         # Save number of rows before filtering for reporting
                         before_count = len(filtered_df)
                         filtered_df = filtered_df[numeric_series.between(min_val, max_val, inclusive="both")]
@@ -284,7 +294,7 @@ class Diagnostic:
         # If max_number_of_images is set and variables_to_test is not empty, sample per group
         if max_images_per_level is not None and len(variables_to_test_config) > 0:
             group_cols = []
-            for var_key in variables_to_test_config.keys():
+            for var_key in variables_to_test_config:
                 if var_key in self._criteria_to_df_map:
                     col_name, accessor_fn = self._criteria_to_df_map[var_key]
                     if accessor_fn:
@@ -292,27 +302,27 @@ class Diagnostic:
                         group_cols.append(col_name + "_for_grouping")
                     else:
                         group_cols.append(col_name)
-            
+
             # Sample per group
             before_count = len(filtered_df)
             sampled_df = filtered_df.groupby(group_cols, dropna=False, group_keys=False).apply(lambda x: x.sample(n=min(len(x), max_images_per_level), random_state=42))
             sampled_df = sampled_df.reset_index(drop=True)
             self.filtered_df = sampled_df.copy()
             after_count = len(self.filtered_df)
-            
+
             if before_count != after_count:
                 print(f"Applied max_images_per_level={max_images_per_level}: {before_count} → {after_count} images")
         else:
             self.filtered_df = filtered_df.copy() # Make a copy to be safe
-        
-        image_paths: List[Path] = []
-        legend_paths: List[Path] = []
-        
+
+        image_paths: list[Path] = []
+        legend_paths: list[Path] = []
+
         # Initialize dict to store actual values of variables_to_test for the filtered images
         # The keys for this dictionary are the actual variable names we are testing (e.g., "number", "blur")
         # These keys come from the `variables_to_test_config` passed in filtering_config.
-        test_variable_data_for_df: Dict[str, List[Any]] = {
-            key: [] for key in variables_to_test_config.keys() if key in self._criteria_to_df_map
+        test_variable_data_for_df: dict[str, list[Any]] = {
+            key: [] for key in variables_to_test_config if key in self._criteria_to_df_map
         }
 
         for _, row in self.filtered_df.iterrows():
@@ -320,12 +330,12 @@ class Diagnostic:
             # Remove "_legend" suffix from image name if present
             clean_image_name = image_name.replace("_legend", "") if "_legend" in image_name else image_name
             image_paths.append(dataset_path / "img" / f"{clean_image_name}.png")
-            
+
             base_name = Path(image_name).stem
             legend_paths.append(dataset_path / "legend_json" / f"{base_name}.json")
 
             # Extract and store the values for each variable under test for the current image
-            for var_key in test_variable_data_for_df.keys(): # Iterate only over keys we initialized
+            for var_key in test_variable_data_for_df: # Iterate only over keys we initialized
                 col_name, accessor_fn = self._criteria_to_df_map[var_key]
                 if col_name in row:
                     raw_value = row[col_name]
@@ -334,20 +344,20 @@ class Diagnostic:
                 else:
                     # This case should ideally not be hit if df construction is robust
                     # and _criteria_to_df_map refers to valid columns.
-                    test_variable_data_for_df[var_key].append(pd.NA) 
-        
+                    test_variable_data_for_df[var_key].append(pd.NA)
+
         print(f"Found {len(image_paths)} images (from {total_images} total)")
-        
+
         return image_paths, legend_paths, test_variable_data_for_df
 
     def run_evaluation(
         self,
-        selected_images: List[Tuple[Path, Path]],
-        selected_legends: List[str],
-        test_variable_values_for_df: Dict[str, List[Any]],
+        selected_images: list[tuple[Path, Path]],
+        selected_legends: list[str],
+        test_variable_values_for_df: dict[str, list[Any]],
         vlm: VLM,
         model_name: str,
-        question_keys: List[str],  # always a single-item list in this refactor
+        question_keys: list[str],  # always a single-item list in this refactor
         task: str = "",
         reformulate: str = "",
         pre_prompt: str = "",
@@ -370,7 +380,7 @@ class Diagnostic:
         Returns:
             None. Results are saved to CSV.
         """
-            
+
         assert len(question_keys) == 1, "run_evaluation expects a single question key per call."
         question_key = question_keys[0]
 
@@ -397,12 +407,12 @@ class Diagnostic:
             TimeElapsedColumn(),
             TimeRemainingColumn(),
         ) as progress:
-            image_task = progress.add_task(f"[cyan]Processing images", total=len(selected_images))
+            image_task = progress.add_task("[cyan]Processing images", total=len(selected_images))
 
             # List to collect call_metrics with context
             call_metrics_records = []
 
-            for i, (image_path, annotation_path) in enumerate(zip(selected_images, selected_legends)):
+            for i, (image_path, annotation_path) in enumerate(zip(selected_images, selected_legends, strict=False)):
                 image_name = image_path.stem
                 progress.update(image_task, description=f"[cyan]Processing image {i+1}/{len(selected_images)}: {image_name}")
 
@@ -509,13 +519,13 @@ class Diagnostic:
 
         return None
 
-    def run_diagnostic(self, config: Dict[str, Any], vlm: VLM, dataset_path: Path, output_dir: Path = Path("diagnostic_results")):
+    def run_diagnostic(self, config: dict[str, Any], vlm: VLM, dataset_path: Path, output_dir: Path = Path("diagnostic_results")):
         """
         Runs the diagnostic on the provided dataset and saves the results to the output directory.
         For each question key, a separate result CSV is generated.
         """
         self.config = config
-        max_images_per_level = config.get("max_images_per_level", None)
+        max_images_per_level = config.get("max_images_per_level")
         selected_images, selected_legends, test_variable_data_for_df = self.filter_existing_content(dataset_path, config, max_images_per_level=max_images_per_level)
         if not selected_images:
             print("No images found after filtering. Aborting diagnostic run.")
@@ -581,7 +591,7 @@ if __name__ == "__main__":
         type=str,
         help="Model name to use."
     )
-    
+
     parser.add_argument(
         "--pre_prompt",
         type=str,
@@ -624,7 +634,7 @@ if __name__ == "__main__":
             provider_kwargs['model_name'] = os.getenv("AZURE_OPENAI_MODEL_NAME_GPT41", "gpt-4.1")
         if not provider_kwargs['api_key'] or not provider_kwargs['endpoint']:
             raise ValueError("Missing AZURE_OPENAI_API_KEY or AZURE_OPENAI_ENDPOINT in environment variables.")
-        
+
     elif selected_provider == VLMProvider.GROQ:
         provider_kwargs['api_key'] = os.getenv("GROQ_API_KEY")
         provider_kwargs['model_name'] = args.model_name # meta-llama/llama-4-scout-17b-16e-instruct
@@ -651,7 +661,7 @@ if __name__ == "__main__":
     config_yaml = {}
     if args.config_path:
         try:
-            with open(args.config_path, 'r') as f:
+            with open(args.config_path) as f:
                 config_yaml = yaml.safe_load(f)
             # Ensure the keys exist, else set to default
             for key, default in [

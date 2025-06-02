@@ -1,16 +1,17 @@
-import itertools
-import random
-from typing import List, Dict, Any, Union, Tuple
-from dataclasses import dataclass, field
-from pathlib import Path
-from typing import Optional
-import yaml
-import logging
 import argparse
-import traceback
-from datetime import datetime
+import itertools
 import json
-from poker.config.models import PokerSceneModel, DEFAULT_CARD_NAMES
+import logging
+import random
+import traceback
+from dataclasses import dataclass, field
+from datetime import datetime
+from pathlib import Path
+from typing import Any
+
+import yaml
+
+from poker.config.models import PokerSceneModel
 from poker.scene_generator import generate_poker_scene_from_config
 
 logger = logging.getLogger(__name__)
@@ -18,7 +19,7 @@ logger = logging.getLogger(__name__)
 @dataclass
 class VariableConfig:
     """Configuration for a variable in the dataset.
-    
+
     Attributes:
         variate_type (str): Type of variable ('fixed', 'varying_random', 'varying_all', 'varying_among_range', 'varying_all_range')
         variate_levels (Any): Value(s) for the variable.
@@ -27,20 +28,20 @@ class VariableConfig:
         randomize_percentage (float): Percentage for randomization. DEPRECATED for count_config.
     """
     variate_type: str
-    variate_levels: Union[Any, List[Any], Tuple[Any, Any]]
+    variate_levels: Any | list[Any] | tuple[Any, Any]
     n_images: int = 1 # Default to 1 image per level/sample
     randomize: bool = False
     randomize_percentage: float = 0.2
-    
+
     def __post_init__(self):
         """Validate the configuration after initialization."""
         valid_types = {'fixed', 'varying_random', 'varying_all', 'varying_among_range', 'varying_all_range'}
         if self.variate_type not in valid_types:
             raise ValueError(f"Invalid type: {self.variate_type}. Must be one of {valid_types}")
-        
+
         if self.variate_type == "fixed" and self.variate_levels is None:
             raise ValueError("Fixed type must have a value")
-        
+
         if self.n_images < 1:
              logger.warning(f"n_images is {self.n_images}, setting to 1.")
              self.n_images = 1
@@ -53,7 +54,7 @@ class VariableConfig:
 @dataclass
 class DatasetConfig:
     """Complete dataset configuration.
-    
+
     Attributes:
         name: Name of the dataset
         output_dir: Directory to save the dataset
@@ -63,15 +64,15 @@ class DatasetConfig:
     """
     name: str
     output_dir: str
-    seed: Optional[int] = None
+    seed: int | None = None
     piece_set: str = "default" # Default to standard pieces
-    variables: Dict[str, VariableConfig] = field(default_factory=dict)
+    variables: dict[str, VariableConfig] = field(default_factory=dict)
 
     def __post_init__(self):
         """Validate the configuration."""
         if self.variables is None:
             self.variables = {}
-        
+
         # Ensure output directory exists
         Path(self.output_dir).mkdir(parents=True, exist_ok=True)
 
@@ -86,13 +87,13 @@ class VariableCombinationGenerator:
         """Checks if a variable name corresponds to the board location."""
         return var_name == 'chess.board_config.location'
 
-    def _add_z_coordinate(self, pos: List[float]) -> List[float]:
+    def _add_z_coordinate(self, pos: list[float]) -> list[float]:
         """Adds the z=0.9 coordinate if it's a 2D position."""
         if isinstance(pos, list) and len(pos) == 2:
             return [pos[0], pos[1], 0.9]
         return pos # Return as is if already 3D or not a list
 
-    def _get_deterministic_values(self, var_name: str, var_config: VariableConfig) -> List[Any]:
+    def _get_deterministic_values(self, var_name: str, var_config: VariableConfig) -> list[Any]:
         """Generates the complete list of values for deterministic variable types, repeating based on n_images."""
         values = []
         n_images_per_level = var_config.n_images
@@ -111,7 +112,7 @@ class VariableCombinationGenerator:
                  raise ValueError(f"Invalid variate_levels for varying_all_range: {var_config.variate_levels}")
         else:
             raise ValueError(f"Unsupported deterministic type: {var_config.variate_type}")
-            
+
         # Ensure raw_values is defined before proceeding (should always be by logic above)
         if 'raw_values' not in locals():
              raise RuntimeError("Internal logic error: raw_values not assigned in _get_deterministic_values")
@@ -129,7 +130,7 @@ class VariableCombinationGenerator:
         else:
              values = processed_values
              print(f"  Deterministic values for {var_name}: {values}")
-            
+
         return values
 
     def _get_single_random_value(self, var_name: str, var_config: VariableConfig) -> Any:
@@ -168,11 +169,11 @@ class VariableCombinationGenerator:
         # Special handling for location (apply z-coordinate)
         if self._is_location_var(var_name):
             value = self._add_z_coordinate(value)
-            
+
         # print(f"  Generated random value for {var_name}: {value}") # Too verbose for every step
         return value
 
-    def generate_variable_combinations(self) -> List[Dict[str, Any]]:
+    def generate_variable_combinations(self) -> list[dict[str, Any]]:
         """
         Generates dataset configurations based on variable types.
         - Fixed variables have constant values.
@@ -182,10 +183,10 @@ class VariableCombinationGenerator:
         multiplied by the product of n_images for each random variable.
         """
         print("\n=== Generating Variable Combinations (New Strategy with n_images) ===")
-        
-        fixed_vars: Dict[str, Any] = {}
-        deterministic_vars: Dict[str, VariableConfig] = {}
-        random_vars: Dict[str, VariableConfig] = {}
+
+        fixed_vars: dict[str, Any] = {}
+        deterministic_vars: dict[str, VariableConfig] = {}
+        random_vars: dict[str, VariableConfig] = {}
 
         # 1. Categorize variables
         print("Categorizing variables...")
@@ -235,7 +236,7 @@ class VariableCombinationGenerator:
                  base_combinations_tuples = list(itertools.product(*deterministic_values_lists))
                  # Convert tuples back to dictionaries
                  base_combinations = [
-                     dict(zip(deterministic_var_names, combo_tuple))
+                     dict(zip(deterministic_var_names, combo_tuple, strict=False))
                      for combo_tuple in base_combinations_tuples
                  ]
             print(f"Generated {len(base_combinations)} base combinations (after deterministic n_images expansion).")
@@ -251,7 +252,7 @@ class VariableCombinationGenerator:
             initial_config.update(base_combo)
             initial_config.update(fixed_vars)
             current_stage_combinations.append(initial_config)
-            
+
         print(f"  Starting with {len(current_stage_combinations)} combinations after deterministic+fixed.")
 
         # Iteratively expand for each random variable
@@ -292,11 +293,11 @@ class VariableCombinationGenerator:
         return final_combinations
 
 class ConfigConverter:
-     def __init__(self, default_config: Dict[str, Any], dataset_config: DatasetConfig):
+     def __init__(self, default_config: dict[str, Any], dataset_config: DatasetConfig):
          self.default_config = default_config
          self.dataset_config = dataset_config
 
-     def _update_config_with_variable(self, config: Dict[str, Any], variable_name: str, value: Any):
+     def _update_config_with_variable(self, config: dict[str, Any], variable_name: str, value: Any):
          """Updates config dict assuming base structure exists."""
          # Special handling for noise configuration to map to noise_config field
          if variable_name.startswith('noise.'):
@@ -312,7 +313,7 @@ class ConfigConverter:
                  config['noise_config'][noise_param] = value
                  logger.debug(f"Mapped noise variable '{variable_name}' to noise_config.{noise_param}={value}")
                  return
-         
+
          # Standard handling for all other variables
          keys = variable_name.split('.')
          current_level = config
@@ -344,16 +345,16 @@ class ConfigConverter:
                  logger.error(f"Cannot set final value. Path termination point is not list/dict at path {'.'.join(keys[:-1])} for '{variable_name}'")
          except Exception as e:
              logger.error(f"Error in _update_config for '{variable_name}' = {value}: {e}", exc_info=True)
-             
 
-     def create_image_config(self, variable_values: Dict[str, Any]) -> Dict[str, Any]:
+
+     def create_image_config(self, variable_values: dict[str, Any]) -> dict[str, Any]:
          """Creates the final image config by merging variable values into the default config.
-         
+
          Relies on PokerSceneModel.__post_init__ to handle card/chip distribution based
          on the high-level inputs provided in variable_values.
          """
          logger.debug(f"Input variable values for config creation: {variable_values}")
-         
+
          # 1. Start with deep copy of default config
          # Using json load/dump for a potentially safer deep copy
          try:
@@ -366,13 +367,13 @@ class ConfigConverter:
          # 2. Apply Variables from the current combination
          for variable_name, value in variable_values.items():
              # Skip internal metadata key if present
-             if variable_name == '_variable_values_used': 
-                 continue 
-                 
+             if variable_name == '_variable_values_used':
+                 continue
+
              logger.debug(f"Applying variable: {variable_name} = {value}")
              # Use the helper to update the nested dictionary
              self._update_config_with_variable(config, variable_name, value)
-         
+
          # 3. Return the merged config
          # PokerSceneModel.from_dict(config) will handle the rest in its __post_init__
          logger.debug("Finished merging variables into config.")
@@ -392,19 +393,19 @@ class DatasetGenerator:
         """Load and validate YAML configuration."""
         # ... (loading logic) ...
         try:
-            with open(self.config_path, 'r') as f:
+            with open(self.config_path) as f:
                 raw_config = yaml.safe_load(f)
                 print("\n=== Raw YAML Configuration ===")
                 print(yaml.dump(raw_config, default_flow_style=False))
         except yaml.YAMLError as e:
             logger.error(f"Error loading config: {e}\n{traceback.format_exc()}")
             raise
-            
+
         if 'dataset' not in raw_config:
             raise ValueError("Missing required 'dataset' section in configuration")
-            
+
         dataset_config_data = raw_config['dataset']
-        
+
         variables = {}
         if 'variables' in raw_config:
             print("\n=== Processing Variables ===")
@@ -451,9 +452,9 @@ class DatasetGenerator:
             variables=variables
         )
 
-    def _load_default_config(self) -> Dict[str, Any]:
+    def _load_default_config(self) -> dict[str, Any]:
         """Load the default configuration."""
-        with open(self.default_config_path, 'r') as f:
+        with open(self.default_config_path) as f:
             return yaml.safe_load(f)
 
     def _setup_logging(self):
@@ -485,18 +486,18 @@ class DatasetGenerator:
              root_logger.addHandler(root_handler)
 
 
-    def _generate_image(self, image_config: Dict[str, Any], output_path_hint: Path):
+    def _generate_image(self, image_config: dict[str, Any], output_path_hint: Path):
         """Generate a single image using the poker scene generator."""
         # Determine final output paths based on the hint
         output_dir = output_path_hint.parent
         base_filename = output_path_hint.stem
         img_output_path = output_dir / f"{base_filename}.png"
-        
+
         try:
             logger.info(f"Starting image generation for config derived from: {image_config.get('_variable_values_used', 'N/A')}")
             # Remove internal metadata key before passing to model
             variable_values_used = image_config.pop('_variable_values_used', None)
-            
+
             # Create the PokerSceneModel instance. Its __post_init__ does the heavy lifting.
             scene_model = PokerSceneModel.from_dict(image_config)
 
@@ -507,17 +508,17 @@ class DatasetGenerator:
                  base_filename=base_filename,
                  # deck_blend_file=image_config.get('deck_blend_file') # scene_model now handles this
              )
-            
-            # Check if generation succeeded 
+
+            # Check if generation succeeded
             if generation_result_data and generation_result_data.get("image_path"):
                 logger.info(f"Generated image: {generation_result_data['image_path']}")
-                
+
                 # Prepare the final config dict for metadata
                 final_configs = {
                     "image_path": str(generation_result_data["image_path"]),
                     "final_scene_config": generation_result_data.get("final_scene_config"),
                     # Add the driving variable values back for metadata
-                    "_variable_values_used": variable_values_used 
+                    "_variable_values_used": variable_values_used
                 }
                 return final_configs
             else:
@@ -549,10 +550,10 @@ class DatasetGenerator:
             # Add original variables to dict for metadata tracking before passing to converter
             variable_values['_variable_values_used'] = variable_values.copy()
             logger.debug(f"Base variable values for image {i+1}: {variable_values['_variable_values_used']}")
-            
+
             try:
                  image_config = converter.create_image_config(variable_values)
-                 
+
                  output_path_hint = output_dir_path / f"{self.config.name}_img_{i:05d}"
                  result = self._generate_image(image_config, output_path_hint)
                  if result:
@@ -575,7 +576,7 @@ class DatasetGenerator:
             return {key: self._make_serializable(value) for key, value in obj.items()}
         elif isinstance(obj, list):
             return [self._make_serializable(item) for item in obj]
-        elif isinstance(obj, (str, int, float, bool)) or obj is None:
+        elif isinstance(obj, str | int | float | bool) or obj is None:
             return obj
         else:
             # Attempt to convert other types to string
@@ -588,7 +589,7 @@ class DatasetGenerator:
                 logger.debug(f"Converting non-serializable type {type(obj)} to string.")
                 return str(obj)
 
-    def _generate_metadata(self, generation_results: List[Dict[str, Any]]):
+    def _generate_metadata(self, generation_results: list[dict[str, Any]]):
         """Generate detailed metadata file (JSON Lines) for the dataset."""
         if not generation_results:
             logger.warning("No images were generated successfully, skipping metadata generation.")
@@ -599,7 +600,7 @@ class DatasetGenerator:
         metadata_path = Path(self.config.output_dir) / 'metadata.jsonl'
         basic_metadata_path = Path(self.config.output_dir) / 'metadata_summary.json'
 
-        # --- Prepare Serializable Variable Config for Summary --- 
+        # --- Prepare Serializable Variable Config for Summary ---
         serializable_var_config = {}
         if self.config.variables:
             for name, var in self.config.variables.items():
@@ -612,7 +613,7 @@ class DatasetGenerator:
                     # If not serializable, convert to string as a fallback
                     safe_levels = str(levels)
                     logger.debug(f"Converted non-serializable variate_levels for '{name}' to string in summary.")
-                
+
                 serializable_var_config[name] = {
                     'variate_type': var.variate_type,
                     'variate_levels': safe_levels, # Use the safe version
@@ -621,7 +622,7 @@ class DatasetGenerator:
         else:
              logger.warning("No variables found in config for metadata summary.")
 
-        # --- Create Summary Metadata Dictionary --- 
+        # --- Create Summary Metadata Dictionary ---
         summary_metadata = {
             'name': self.config.name,
             'generation_date': datetime.now().isoformat(),
@@ -630,7 +631,7 @@ class DatasetGenerator:
             'original_variable_config': serializable_var_config # Use the pre-processed dict
         }
 
-        # --- Write Summary Metadata --- 
+        # --- Write Summary Metadata ---
         try:
             with open(basic_metadata_path, 'w') as f_sum:
                  json.dump(summary_metadata, f_sum, indent=2)
@@ -638,11 +639,11 @@ class DatasetGenerator:
         except TypeError as e:
              logger.error(f"Could not serialize summary metadata to JSON: {e}", exc_info=True)
              # Log the problematic dict for debugging
-             logger.debug(f"Problematic summary_metadata: {summary_metadata}") 
+             logger.debug(f"Problematic summary_metadata: {summary_metadata}")
         except Exception as e:
              logger.error(f"Error writing summary metadata file: {e}", exc_info=True)
 
-        # --- Write Detailed Line-by-Line Metadata --- 
+        # --- Write Detailed Line-by-Line Metadata ---
         try:
             with open(metadata_path, 'w') as f_meta:
                 for result in generation_results:
@@ -664,11 +665,11 @@ def main():
     parser = argparse.ArgumentParser(description="Generate chess image dataset from YAML configuration")
     parser.add_argument("config_path", type=str, help="Path to the main YAML configuration file.")
     parser.add_argument("--default-config", type=str, default=None, help="Path to the default YAML configuration file. If omitted, assumes 'default_config.yaml' in the same directory as config_path.")
-    
+
     args = parser.parse_args()
 
     try:
-        # --- Determine paths --- 
+        # --- Determine paths ---
         config_path = Path(args.config_path)
         if not config_path.is_file():
             logger.critical(f"Input configuration file not found: {config_path}")
@@ -693,7 +694,7 @@ def main():
             default_config_path=str(default_config_path) # Pass as string
         )
         dataset_generator.generate()
-        logger.info(f"Dataset generation completed successfully.")
+        logger.info("Dataset generation completed successfully.")
     except Exception as e:
         # Log the final error trace before exiting
         logger.critical(f"An unhandled error occurred during dataset generation: {e}", exc_info=True)
@@ -702,5 +703,5 @@ def main():
 if __name__ == "__main__":
     # Setup basic logging JUST for argument parsing errors if main script execution fails early
     logging.basicConfig(level=logging.INFO, format='%(levelname)s: %(message)s')
-    main() 
+    main()
 

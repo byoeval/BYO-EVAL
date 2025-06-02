@@ -1,11 +1,11 @@
-import re
 import json
+import re
 from collections import defaultdict
 from pathlib import Path
 
 
 def parse_chess_file(filepath):
-    with open(filepath, 'r') as file:
+    with open(filepath) as file:
         lines = file.readlines()
 
     result = {

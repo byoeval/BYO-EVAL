@@ -1,18 +1,20 @@
-import bpy
 import math
-from typing import Dict, Any
+from typing import Any
 
-from .base import ChessPiece
+import bpy
+
 from ..config.models import PieceModel
+from .base import ChessPiece
+
 
 class King(ChessPiece):
     """Chess king piece implementation."""
-    
+
     def create_geometry(self) -> None:
         """Create the king geometry."""
         location = self.config.location
         scale = self.config.geometry.scale
-        
+
         # Base of the king - starts at the specified z height
         bpy.ops.mesh.primitive_cylinder_add(
             vertices=32,
@@ -23,7 +25,7 @@ class King(ChessPiece):
         base = bpy.context.active_object
         base.name = f"{self.get_color_name()}King_Base"
         self.parts.append(base)
-        
+
         # Body of the king (tapered cylinder)
         body_height = 0.8 * scale
         bpy.ops.mesh.primitive_cone_add(
@@ -40,7 +42,7 @@ class King(ChessPiece):
         body = bpy.context.active_object
         body.name = f"{self.get_color_name()}King_Body"
         self.parts.append(body)
-        
+
         # Crown base
         crown_height = 0.15 * scale
         bpy.ops.mesh.primitive_cylinder_add(
@@ -56,19 +58,19 @@ class King(ChessPiece):
         crown_base = bpy.context.active_object
         crown_base.name = f"{self.get_color_name()}King_CrownBase"
         self.parts.append(crown_base)
-        
+
         # Create crown points
         num_points = 5
         point_radius = 0.06 * scale
         point_height = 0.1 * scale
         crown_radius = 0.2 * scale
         points_z = location[2] + body_height + crown_height + point_height/2
-        
+
         for i in range(num_points):
             angle = (2 * math.pi * i) / num_points
             pos_x = location[0] + math.cos(angle) * crown_radius
             pos_y = location[1] + math.sin(angle) * crown_radius
-            
+
             # Create a cone for each point
             bpy.ops.mesh.primitive_cone_add(
                 vertices=16,
@@ -80,11 +82,11 @@ class King(ChessPiece):
             point = bpy.context.active_object
             point.name = f"{self.get_color_name()}King_Point_{i}"
             self.parts.append(point)
-        
+
         # Create cross
         cross_base_z = points_z + point_height/2
         cross_thickness = 0.06 * scale
-        
+
         # Vertical part
         bpy.ops.mesh.primitive_cube_add(
             size=cross_thickness,
@@ -98,7 +100,7 @@ class King(ChessPiece):
         cross_vert.name = f"{self.get_color_name()}King_CrossVert"
         cross_vert.scale = (1.0, 1.0, 2.0)
         self.parts.append(cross_vert)
-        
+
         # Horizontal part
         bpy.ops.mesh.primitive_cube_add(
             size=cross_thickness,
@@ -114,16 +116,16 @@ class King(ChessPiece):
         self.parts.append(cross_horz)
 
 
-def create_king(config: Dict[str, Any]) -> bpy.types.Object:
+def create_king(config: dict[str, Any]) -> bpy.types.Object:
     """
     Create a chess king piece from a configuration dictionary.
-    
+
     Args:
         config: Dictionary containing piece configuration
-        
+
     Returns:
         The created king object
     """
     piece_config = PieceModel.from_dict(config)
     king = King(piece_config)
-    return king.create() 
+    return king.create()

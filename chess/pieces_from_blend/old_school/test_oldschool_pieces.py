@@ -11,15 +11,19 @@ if project_root not in sys.path:
 
 import bpy
 
-from chess.pieces_from_blend.old_school.pieces import (
-    create_pawn, create_knight, create_bishop,
-    create_queen, create_king, create_rook
-)
-from scene_setup.models import SceneSetupModel
-from scene_setup.rendering import clear_scene
-from scene_setup.general_setup import build_setup_from_config
 from chess.board import ChessBoard
 from chess.config.models import BoardModel
+from chess.pieces_from_blend.old_school.pieces import (
+    create_bishop,
+    create_king,
+    create_knight,
+    create_pawn,
+    create_queen,
+    create_rook,
+)
+from scene_setup.general_setup import build_setup_from_config
+from scene_setup.models import SceneSetupModel
+from scene_setup.rendering import clear_scene
 
 # Scene configuration
 scene_config = {
@@ -61,22 +65,22 @@ board_config = {
 def clear_scene():
     """Clear all objects and collections from the scene."""
     print("Clearing scene...", file=sys.stderr)
-    
+
     # Delete all objects
     bpy.ops.object.select_all(action='SELECT')
     bpy.ops.object.delete()
     print("- Deleted all objects", file=sys.stderr)
-    
+
     # Delete all collections except the master collection
     for collection in bpy.data.collections:
         bpy.data.collections.remove(collection)
     print("- Deleted all collections", file=sys.stderr)
-    
+
     # Delete all materials
     for material in bpy.data.materials:
         bpy.data.materials.remove(material)
     print("- Deleted all materials", file=sys.stderr)
-    
+
     # Delete all meshes
     for mesh in bpy.data.meshes:
         bpy.data.meshes.remove(mesh)
@@ -84,31 +88,31 @@ def clear_scene():
 
 def main():
     print("\n=== Starting Test Oldschool Pieces ===", file=sys.stderr)
-    
+
     # Clear the scene
     clear_scene()
-    
+
     # Set up the scene using general setup
     scene_setup_config = SceneSetupModel.from_dict(scene_config)
     scene_result = build_setup_from_config(scene_setup_config.to_dict())
     print("Scene setup completed", file=sys.stderr)
-    
+
     # Create the chess board
     print("\nCreating chess board:", file=sys.stderr)
     board_config_obj = BoardModel(**board_config)
     board = ChessBoard(board_config_obj)
     board_obj, squares_collection = board.create()
     print("- Chess board created", file=sys.stderr)
-    
+
     # Get cell positions from the board
     cell_positions = board.get_cell_positions()
-    
+
     # Create pieces with different positions and colors
     print("\nCreating chess pieces:", file=sys.stderr)
-    
+
     # Get board height for piece placement
     board_height = board_config["location"][2] + board_config["thickness"]
-    
+
     # Define piece positions on the board (using chess notation)
     piece_positions = {
         # White pieces
@@ -121,7 +125,7 @@ def main():
         "white_bishop2": (7, 5), # Bottom row, sixth column
         "white_knight2": (7, 6), # Bottom row, seventh column
         "white_rook2": (7, 7),   # Bottom row, eighth column
-        
+
         # Black pieces
         "black_pawn": (1, 7),    # Second row from top, last column
         "black_rook": (0, 0),    # Top row, first column
@@ -133,7 +137,7 @@ def main():
         "black_knight2": (0, 6), # Top row, seventh column
         "black_rook2": (0, 7),   # Top row, eighth column
     }
-    
+
     # Create all pieces
     piece_creators = {
         "pawn": create_pawn,
@@ -143,7 +147,7 @@ def main():
         "queen": create_queen,
         "king": create_king
     }
-    
+
     # White pieces
     print("\nCreating white pieces:", file=sys.stderr)
     for piece_name, (row, col) in piece_positions.items():
@@ -160,7 +164,7 @@ def main():
             }
             piece = piece_creators[piece_type](config)
             print(f"- White {piece_type} created", file=sys.stderr)
-    
+
     # Black pieces
     print("\nCreating black pieces:", file=sys.stderr)
     for piece_name, (row, col) in piece_positions.items():
@@ -177,39 +181,39 @@ def main():
             }
             piece = piece_creators[piece_type](config)
             print(f"- Black {piece_type} created", file=sys.stderr)
-    
+
     # Set up render output
     print("\nSetting up render:", file=sys.stderr)
     bpy.context.scene.render.image_settings.file_format = 'PNG'
     output_dir = os.path.join(project_root, "output")
     os.makedirs(output_dir, exist_ok=True)
-    
+
     # Set up file paths for both render and blend file
     base_name = "test_oldschool_pieces"
     render_path = os.path.join(output_dir, f"{base_name}_render.png")
     blend_path = os.path.join(output_dir, f"{base_name}.blend")
-    
+
     bpy.context.scene.render.filepath = render_path
     print(f"- Output render path: {render_path}", file=sys.stderr)
     print(f"- Output blend path: {blend_path}", file=sys.stderr)
-    
+
     # Print scene statistics
     print("\nScene statistics:", file=sys.stderr)
     print(f"- Objects in scene: {len(bpy.context.scene.objects)}", file=sys.stderr)
     print(f"- Collections: {len(bpy.data.collections)}", file=sys.stderr)
     print(f"- Materials: {len(bpy.data.materials)}", file=sys.stderr)
     print(f"- Meshes: {len(bpy.data.meshes)}", file=sys.stderr)
-    
+
     # Save the blend file
     print("\nSaving blend file...", file=sys.stderr)
     bpy.ops.wm.save_as_mainfile(filepath=blend_path)
     print(f"Blend file saved to {blend_path}", file=sys.stderr)
-    
+
     # Render
     print("\nStarting render...", file=sys.stderr)
     bpy.ops.render.render(write_still=True)
     print(f"Render completed and saved to {render_path}", file=sys.stderr)
-    
+
     print("\n=== Test Complete ===", file=sys.stderr)
 
 if __name__ == "__main__":

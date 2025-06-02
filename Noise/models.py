@@ -1,7 +1,7 @@
-from dataclasses import dataclass, field
-from typing import Dict, Any, Optional, Tuple, List, Union
-from enum import Enum
 import logging
+from dataclasses import dataclass, field
+from enum import Enum
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -20,11 +20,11 @@ class BaseNoiseModel:
     """Base model for all noise effects."""
     enabled: bool = True
     intensity: float = 1.0
-    seed: Optional[int] = None
+    seed: int | None = None
     blend_mode: str = "MIX"
     opacity: float = 1.0
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert the model to a dictionary format."""
         return {
             "enabled": self.enabled,
@@ -33,13 +33,13 @@ class BaseNoiseModel:
             "blend_mode": self.blend_mode,
             "opacity": self.opacity
         }
-        
+
     @classmethod
-    def from_dict(cls, config: Dict[str, Any]) -> 'BaseNoiseModel':
+    def from_dict(cls, config: dict[str, Any]) -> 'BaseNoiseModel':
         """Create a BaseNoiseModel from a dictionary."""
         if not isinstance(config, dict):
             config = {}
-            
+
         default_instance = cls()
         return cls(
             enabled=config.get("enabled", default_instance.enabled),
@@ -53,7 +53,7 @@ class BaseNoiseModel:
 @dataclass
 class BlurNoiseModel:
     """Model for blur noise effects.
-    
+
     The blur effect is implemented using camera depth of field.
     String presets: "none", "very_low", "low", "medium", "high", "very_high"
     """
@@ -67,26 +67,26 @@ class BlurNoiseModel:
         "very_high": 0.5  # Very strong blur
     }
 
-    intensity: Union[str, float] = "none"  # Can be string preset or direct float F-stop value
+    intensity: str | float = "none"  # Can be string preset or direct float F-stop value
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert the model to a dictionary format."""
         return {"blur": self.intensity}
-    
+
     @classmethod
-    def from_dict(cls, config: Dict[str, Any]) -> 'BlurNoiseModel':
+    def from_dict(cls, config: dict[str, Any]) -> 'BlurNoiseModel':
         """Create a BlurNoiseModel from a dictionary."""
         if not isinstance(config, dict):
             config = {}
-            
+
         blur_value = config.get("blur", "none")
-        
+
         # Validate if it's a string preset or a direct number
         if isinstance(blur_value, str):
             if blur_value not in cls.BLUR_PRESETS:
                 logger.warning(f"Invalid blur preset '{blur_value}'. Using 'none'. Valid presets: {list(cls.BLUR_PRESETS.keys())}")
                 blur_value = "none"
-        elif not isinstance(blur_value, (int, float)):
+        elif not isinstance(blur_value, int | float):
              logger.warning(f"Invalid blur value type '{type(blur_value)}'. Using 'none'.")
              blur_value = "none"
 
@@ -97,7 +97,7 @@ class BlurNoiseModel:
 @dataclass
 class LightNoiseModel:
     """Model for light noise effects.
-    
+
     Lighting presets:
     - "very_low": 30% of standard lighting
     - "low": 60% of standard lighting
@@ -121,16 +121,16 @@ class LightNoiseModel:
 
     lighting: str = "medium"  # Lighting intensity preset
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert the model to a dictionary format."""
         return {"lighting": self.lighting}
-    
+
     @classmethod
-    def from_dict(cls, config: Dict[str, Any]) -> 'LightNoiseModel':
+    def from_dict(cls, config: dict[str, Any]) -> 'LightNoiseModel':
         """Create a LightNoiseModel from a dictionary."""
         if not isinstance(config, dict):
             config = {}
-            
+
         default_instance = cls()
         return cls(lighting=config.get("lighting", default_instance.lighting))
 
@@ -138,7 +138,7 @@ class LightNoiseModel:
 @dataclass
 class TableTextureNoiseModel:
     """Model for table texture noise effects.
-    
+
     Texture entropy presets:
     - "low": Simple monochrome table
     - "medium": Noisy texture with some color variation
@@ -163,16 +163,16 @@ class TableTextureNoiseModel:
 
     table_texture: str = "medium"  # Texture entropy preset
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert the model to a dictionary format."""
         return {"table_texture": self.table_texture}
-    
+
     @classmethod
-    def from_dict(cls, config: Dict[str, Any]) -> 'TableTextureNoiseModel':
+    def from_dict(cls, config: dict[str, Any]) -> 'TableTextureNoiseModel':
         """Create a TableTextureNoiseModel from a dictionary."""
         if not isinstance(config, dict):
             config = {}
-            
+
         default_instance = cls()
         return cls(table_texture=config.get("table_texture", default_instance.table_texture))
 
@@ -180,7 +180,7 @@ class TableTextureNoiseModel:
 @dataclass
 class DistractorNoiseModel:
     """Model for distractor noise effects.
-    
+
     Distractor presets:
     - "none": No distractors
     - "low": Few simple distractors
@@ -188,11 +188,11 @@ class DistractorNoiseModel:
     - "high": Many complex distractors
     """
     intensity: str = "none"  # String preset for distractor intensity
-    types: List[str] = field(default_factory=lambda: [])  # Types of distractors to include
-    count_range: Optional[Tuple[int, int]] = None  # Range of distractors to generate
-    position_range: Optional[Tuple[Tuple[float, float], Tuple[float, float]]] = None  # Range for distractor positions
+    types: list[str] = field(default_factory=list)  # Types of distractors to include
+    count_range: tuple[int, int] | None = None  # Range of distractors to generate
+    position_range: tuple[tuple[float, float], tuple[float, float]] | None = None  # Range for distractor positions
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert the model to a dictionary format."""
         result = {
             "distractors": self.intensity,
@@ -203,13 +203,13 @@ class DistractorNoiseModel:
         if self.position_range:
             result["distractor_position_range"] = self.position_range
         return result
-        
+
     @classmethod
-    def from_dict(cls, config: Dict[str, Any]) -> 'DistractorNoiseModel':
+    def from_dict(cls, config: dict[str, Any]) -> 'DistractorNoiseModel':
         """Create a DistractorNoiseModel from a dictionary."""
         if not isinstance(config, dict):
             config = {}
-            
+
         default_instance = cls()
         return cls(
             intensity=config.get("distractors", default_instance.intensity),
@@ -222,11 +222,11 @@ class DistractorNoiseModel:
 @dataclass
 class NoiseConfigModel:
     """Configuration model for all noise effects."""
-    blur: Optional[BlurNoiseModel] = None
-    light: Optional[LightNoiseModel] = None
-    table_texture: Optional[TableTextureNoiseModel] = None
+    blur: BlurNoiseModel | None = None
+    light: LightNoiseModel | None = None
+    table_texture: TableTextureNoiseModel | None = None
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert the noise config to a dictionary format."""
         result = {}
         if self.blur:
@@ -238,11 +238,11 @@ class NoiseConfigModel:
         return result
 
     @classmethod
-    def from_dict(cls, config: Dict[str, Any]) -> 'NoiseConfigModel':
+    def from_dict(cls, config: dict[str, Any]) -> 'NoiseConfigModel':
         """Create a NoiseConfigModel from a dictionary."""
         if not isinstance(config, dict):
             config = {}
-            
+
         return cls(
             blur=BlurNoiseModel.from_dict(config) if "blur" in config else None,
             light=LightNoiseModel.from_dict(config) if "lighting" in config else None,

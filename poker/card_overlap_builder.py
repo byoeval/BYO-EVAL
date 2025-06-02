@@ -1,21 +1,29 @@
-import bpy
-import random
-import math
 import logging
-from mathutils import Vector
-from typing import Union, List, Dict, Any, Optional, Tuple
+import math
+import os
+import random
 
 # Ensure workspace root is in path for sibling imports
 import sys
-import os
+from typing import Any
+
+import bpy
+from mathutils import Vector
+
 workspace_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
 if workspace_root not in sys.path:
     sys.path.append(workspace_root)
 
 # Models and Loader
 from poker.config.models import (
-    CardOverlapModel, LayoutMode, CardModel, CardTypeModel, CardTypeMode,
-    DEFAULT_CARD_WIDTH, DEFAULT_CARD_HEIGHT, DEFAULT_CARD_NAMES
+    DEFAULT_CARD_HEIGHT,
+    DEFAULT_CARD_NAMES,
+    DEFAULT_CARD_WIDTH,
+    CardModel,
+    CardOverlapModel,
+    CardTypeMode,
+    CardTypeModel,
+    LayoutMode,
 )
 from poker.load_card import PokerCardLoader
 
@@ -25,15 +33,15 @@ TINY_Z_OFFSET = 0.0005 # To prevent z-fighting
 logger = logging.getLogger(__name__)
 
 # --- Helper Function ---
-def _distribute_items_randomly(total_items: int, num_bins: int, rng: random.Random, min_per_bin: int = 0) -> List[int]:
+def _distribute_items_randomly(total_items: int, num_bins: int, rng: random.Random, min_per_bin: int = 0) -> list[int]:
     """Distributes a total number of items randomly into bins, ensuring a minimum per bin.
-    
+
     Args:
         total_items: Total number of items to distribute.
         num_bins: Number of bins.
         rng: Random number generator instance.
         min_per_bin: Minimum number of items required in each bin.
-        
+
     Returns:
         A list where each element is the count of items in the corresponding bin.
     """
@@ -72,9 +80,9 @@ def _distribute_items_randomly(total_items: int, num_bins: int, rng: random.Rand
 
 # --- Main Builder Function ---
 def build_card_overlap_layout_from_config(
-    config: Union[Dict[str, Any], CardOverlapModel],
+    config: dict[str, Any] | CardOverlapModel,
     card_loader: PokerCardLoader
-) -> List[bpy.types.Object]:
+) -> list[bpy.types.Object]:
     """
     Builds a general layout of cards with overlap control based on configuration.
 
@@ -132,7 +140,7 @@ def build_card_overlap_layout_from_config(
              logger.error("Source deck for card dealing is empty. Cannot proceed.")
              return []
 
-        dealt_card_names: List[str] = []
+        dealt_card_names: list[str] = []
         if allow_repetition:
             dealt_card_names = rng.choices(source_deck, k=model.overall_cards)
         else:
@@ -140,7 +148,7 @@ def build_card_overlap_layout_from_config(
                  logger.error(f"Cannot deal {model.overall_cards} unique cards from a deck of size {len(source_deck)}.")
                  return []
             dealt_card_names = rng.sample(source_deck, k=model.overall_cards)
-        
+
         logger.info(f"Dealt {len(dealt_card_names)} card names (repetition={allow_repetition}).")
 
 
@@ -160,7 +168,7 @@ def build_card_overlap_layout_from_config(
 
 
         # --- 4. Distribute Cards into Lines/Columns ---
-        items_per_bin: List[int] = []
+        items_per_bin: list[int] = []
         num_bins = 0
         if model.layout_mode == LayoutMode.HORIZONTAL:
             num_bins = model.n_lines
@@ -170,7 +178,7 @@ def build_card_overlap_layout_from_config(
             num_bins = model.n_columns
             items_per_bin = _distribute_items_randomly(model.overall_cards, num_bins, rng, min_per_bin=2)
             logger.info(f"Distributed cards into {num_bins} columns (min 2 each if possible): {items_per_bin}")
-        
+
         if sum(items_per_bin) != model.overall_cards:
              logger.error(f"Card distribution failed: Sum of cards per bin ({sum(items_per_bin)}) != overall cards ({model.overall_cards})")
              return [] # Should not happen with _distribute_items_randomly
@@ -178,7 +186,7 @@ def build_card_overlap_layout_from_config(
 
         # --- 5. Calculate Placement Parameters ---
         target_scale: float
-        if isinstance(model.scale, (int, float)):
+        if isinstance(model.scale, int | float):
             target_scale = float(model.scale)
         elif isinstance(model.scale, tuple) and len(model.scale) == 3:
             target_scale = float(model.scale[0]) # Use X component for simplicity
@@ -253,7 +261,7 @@ def build_card_overlap_layout_from_config(
                         loaded_cards.append(loaded_obj)
                     else:
                         logger.warning(f"Failed to load card '{card_name}' (index {card_list_idx})")
-                    
+
                     card_list_idx += 1
                 if card_list_idx >= model.overall_cards: break # Break outer loop if done
 
@@ -335,8 +343,8 @@ if __name__ == "__main__":
 
     try:
         from scene_setup.general_setup import build_setup_from_config
-        from utils.blender_utils import render_scene
         from scene_setup.rendering import clear_scene
+        from utils.blender_utils import render_scene
     except ImportError as e:
         print(f"Error importing necessary modules: {e}")
         print("Please ensure the script is run from the workspace root or PYTHONPATH is set correctly.")
@@ -406,7 +414,7 @@ if __name__ == "__main__":
     built_cards_h = []
     try:
         # Setup scene for horizontal
-        build_setup_from_config(scene_setup_config) 
+        build_setup_from_config(scene_setup_config)
         card_loader = PokerCardLoader() # Initialize loader
         built_cards_h = build_card_overlap_layout_from_config(test_config_h, card_loader)
         if built_cards_h:
@@ -426,16 +434,16 @@ if __name__ == "__main__":
         import traceback
         traceback.print_exc()
 
-    # --- Clear Scene --- 
+    # --- Clear Scene ---
     print("\n--- Clearing Scene ---")
     clear_scene()
 
-    # --- Build and Render Vertical Layout --- 
+    # --- Build and Render Vertical Layout ---
     print("\n--- Building Vertical Layout --- ")
     built_cards_v = []
     try:
         # Re-setup scene after clearing
-        build_setup_from_config(scene_setup_config) 
+        build_setup_from_config(scene_setup_config)
         card_loader = PokerCardLoader() # Re-initialize loader
         built_cards_v = build_card_overlap_layout_from_config(test_config_v, card_loader)
         if built_cards_v:
