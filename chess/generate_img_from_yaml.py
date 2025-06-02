@@ -154,7 +154,7 @@ class ChessImageGenerator:
                     if self.config is None:
                         raise ValueError("Configuration file is empty or invalid")
             except yaml.YAMLError as e:
-                raise yaml.YAMLError(f"Invalid YAML configuration: {e}")
+                raise yaml.YAMLError(f"Invalid YAML configuration: {e}") from e
         else:
             self.config = self.config_dict
 

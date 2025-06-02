@@ -373,7 +373,7 @@ class MetricsCalculator:
             grouped_data = self.df.groupby(self.group_by_cols, dropna=False)
         except KeyError as e:
             # This should be caught by the check above, but as a safeguard:
-            raise ValueError(f"Error during groupby operation. Ensure all group_by_cols exist: {e}")
+            raise ValueError(f"Error during groupby operation. Ensure all group_by_cols exist: {e}") from e
 
         all_grouped_metrics_results: list[dict[str, Any]] = []
 

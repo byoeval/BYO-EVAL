@@ -333,8 +333,8 @@ class CardTypeModel:
         mode_str = config.get("mode", CardTypeMode.FULL_DECK.value)
         try:
             mode_enum = CardTypeMode(mode_str)
-        except ValueError:
-            raise ValueError(f"Invalid CardTypeMode: {mode_str}. Must be one of {[m.value for m in CardTypeMode]}")
+        except ValueError as e:
+            raise ValueError(f"Invalid CardTypeMode: {mode_str}. Must be one of {[m.value for m in CardTypeMode]}") from e
 
         # Basic type checks for conditional required fields
         subset_n = config.get('subset_n')
@@ -474,11 +474,10 @@ class ChipPileModel:
         # Ensure base_chip_config is valid early
         base_config = config['base_chip_config']
         if isinstance(base_config, dict):
-             # Attempt to parse it to validate required keys like chip_object_name
              try:
                  _ = ChipModel.from_dict(base_config)
              except (TypeError, ValueError) as e:
-                  raise ValueError(f"Invalid 'base_chip_config': {e}")
+                  raise ValueError(f"Invalid 'base_chip_config': {e}") from e
         elif not isinstance(base_config, ChipModel):
              raise TypeError("'base_chip_config' must be a dict or ChipModel instance.")
 
@@ -561,7 +560,7 @@ class ChipAreaConfig:
             try:
                 _ = ChipPileModel.from_dict(base_pile_conf)
             except (TypeError, ValueError) as e:
-                raise ValueError(f"Invalid 'base_pile_config': {e}")
+                raise ValueError(f"Invalid 'base_pile_config': {e}") from e
         elif not isinstance(base_pile_conf, ChipPileModel):
             raise TypeError("'base_pile_config' must be a dict or ChipPileModel")
 
@@ -571,7 +570,7 @@ class ChipAreaConfig:
              temp_default_base_pile = ChipPileModel.from_dict({'n_chips': 1, 'base_chip_config': {'chip_object_name': 'temp'}, 'location': (0,0,0)})
         except Exception as e:
              # Fallback if even default parsing fails (shouldn't happen)
-             raise RuntimeError(f"Failed to create temporary default base pile model: {e}")
+             raise RuntimeError(f"Failed to create temporary default base pile model: {e}") from e
         temp_instance = cls(base_pile_config=temp_default_base_pile)
 
         return cls(
@@ -740,8 +739,8 @@ class CardOverlapModel:
         # Convert layout_mode string to Enum
         try:
             layout_mode_enum = LayoutMode(config['layout_mode'])
-        except ValueError:
-             raise ValueError(f"Invalid layout_mode: '{config['layout_mode']}'. Must be 'horizontal' or 'vertical'.")
+        except ValueError as e:
+            raise ValueError(f"Invalid layout_mode: '{config['layout_mode']}'. Must be one of {[m.value for m in LayoutMode]}") from e
 
         # Create a temporary instance to access defaults
         # Need valid values for required fields AND conditional fields for the temp instance

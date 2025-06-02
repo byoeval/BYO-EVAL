@@ -98,7 +98,7 @@ def deal_cards(
             logger.warning(f"Invalid max_river_cards ({inputs.max_river_cards}), ignoring it.")
             inputs.max_river_cards = None
     except TypeError as e:
-        raise ValueError(f"Invalid structure in card_distribution_inputs: {e}")
+        raise ValueError(f"Invalid structure in card_distribution_inputs: {e}") from e
 
     # Get max limits (use None if not set, indicating no limit)
     max_p_cards = inputs.max_player_cards

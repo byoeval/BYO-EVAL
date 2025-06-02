@@ -68,7 +68,7 @@ def deal_chip_piles(
             logger.warning(f"Invalid min_piles_per_player ({inputs.min_piles_per_player}), ignoring it.")
             inputs.min_piles_per_player = None
     except TypeError as e:
-        raise ValueError(f"Invalid structure in chip_distribution_inputs: {e}")
+        raise ValueError(f"Invalid structure in chip_distribution_inputs: {e}") from e
 
     player_pile_counts = [0] * num_players
     rng = random.Random(random_seed) if random_seed is not None else random.Random()

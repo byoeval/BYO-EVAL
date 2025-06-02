@@ -37,9 +37,9 @@ def calculate_player_locations(
 
     try:
         table_shape = table_conf.get('shape', 'rectangular')
-    except AttributeError:
+    except AttributeError as e:
         logger.error("Invalid table_conf format, expected a dictionary.")
-        raise ValueError("Invalid table_conf format, expected a dictionary.")
+        raise ValueError("Invalid table_conf format, expected a dictionary.") from e
 
     if table_shape == "circular":
         try:
@@ -59,10 +59,10 @@ def calculate_player_locations(
             table_radius = table_diameter / 2.0
         except KeyError as e:
             logger.error(f"{e}")
-            raise ValueError(str(e))
+            raise ValueError(str(e)) from e
         except (ValueError, TypeError) as e:
              logger.error(f"Invalid dimension for circular table: {e}")
-             raise ValueError(f"Invalid dimension for circular table: {e}")
+             raise ValueError(f"Invalid dimension for circular table: {e}") from e
 
         if distribution_config.spacing_degrees is not None:
             angle_step_rad = math.radians(distribution_config.spacing_degrees)
@@ -86,12 +86,12 @@ def calculate_player_locations(
             width = float(table_conf['width'])
             if length <= 0 or width <= 0:
                 raise ValueError("Table length and width must be positive.")
-        except KeyError:
+        except KeyError as e:
             logger.error("Rectangular layout requires 'length' and 'width' in table_conf.")
-            raise ValueError("Rectangular layout requires 'length' and 'width' in table_conf.")
+            raise ValueError("Rectangular layout requires 'length' and 'width' in table_conf.") from e
         except (ValueError, TypeError) as e:
             logger.error(f"Invalid dimensions for rectangular table: {e}")
-            raise ValueError(f"Invalid dimensions for rectangular table: {e}")
+            raise ValueError(f"Invalid dimensions for rectangular table: {e}") from e
 
         # Factor to control how far players are placed from the edge towards the center.
         # 0.0 = at the edge (original position), 1.0 = at the very center (0,0).

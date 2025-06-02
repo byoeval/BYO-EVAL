@@ -1,0 +1,494 @@
+chess/config/advanced_models.py:66:7: F811 Redefinition of unused `PieceCountModel` from line 44
+   |
+64 | # Unified piece count config
+65 | @dataclass
+66 | class PieceCountModel:
+   |       ^^^^^^^^^^^^^^^ F811
+67 |     """
+68 |     Configuration for piece counts, supporting multiple input types.
+   |
+   = help: Remove definition: `PieceCountModel`
+
+chess/config/advanced_models.py:300:7: F811 Redefinition of unused `PieceTypeModel` from line 51
+    |
+298 | # Unified piece type config
+299 | @dataclass
+300 | class PieceTypeModel:
+    |       ^^^^^^^^^^^^^^ F811
+301 |     """
+302 |     Unified configuration for piece types, supporting multiple input types.
+    |
+    = help: Remove definition: `PieceTypeModel`
+
+chess/dataset/generate_dataset.py:46:9: SIM102 Use a single `if` statement instead of nested `if` statements
+   |
+44 |                self.n_images = 1
+45 |   
+46 |           if self.variate_type in {"varying_random", "varying_all", "varying_among_range", "varying_all_range"}:
+   |  _________^
+47 | |             if self.variate_levels is None:
+   | |___________________________________________^ SIM102
+48 |                   raise ValueError(f"Varying type '{self.variate_type}' must have variate_levels")
+   |
+   = help: Combine `if` statements using `and`
+
+chess/dataset/generate_dataset.py:402:9: SIM102 Use a single `if` statement instead of nested `if` statements
+    |
+401 |           # Ensure position_config has default start_point if only spread_level was provided
+402 |           if 'chess' in config and 'position_config' in config['chess']:
+    |  _________^
+403 | |              if 'start_point' not in config['chess']['position_config']:
+    | |________________________________________________________________________^ SIM102
+404 |                     config['chess']['position_config']['start_point'] = 'center'
+    |
+    = help: Combine `if` statements using `and`
+
+chess/dataset/generate_dataset.py:447:21: SIM102 Use a single `if` statement instead of nested `if` statements
+    |
+445 |                       variate_type = value.get('variate_type')
+446 |                       # Convert list to tuple for range types if appropriate
+447 |                       if variate_type in ['varying_all_range', 'varying_among_range'] and isinstance(variate_levels, list):
+    |  _____________________^
+448 | |                          # Check if it's a range like [min, max] or location range [[xmin,xmax],[ymin,ymax]]
+449 | |                          if not (len(variate_levels) == 2 and isinstance(variate_levels[0], list) and isinstance(variate_levels[1], list)):
+    | |___________________________________________________________________________________________________________________________________________^ SIM102
+450 |                                 variate_levels = tuple(variate_levels)
+    |
+    = help: Combine `if` statements using `and`
+
+chess/generate_img_from_yaml.py:157:17: B904 Within an `except` clause, raise exceptions with `raise ... from err` or `raise ... from None` to distinguish them from errors in exception handling
+    |
+155 |                         raise ValueError("Configuration file is empty or invalid")
+156 |             except yaml.YAMLError as e:
+157 |                 raise yaml.YAMLError(f"Invalid YAML configuration: {e}")
+    |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ B904
+158 |         else:
+159 |             self.config = self.config_dict
+    |
+
+chess/pieces_from_blend/old_school/test_oldschool_pieces.py:65:5: F811 Redefinition of unused `clear_scene` from line 26
+   |
+63 | }
+64 | 
+65 | def clear_scene():
+   |     ^^^^^^^^^^^ F811
+66 |     """Clear all objects and collections from the scene."""
+67 |     print("Clearing scene...", file=sys.stderr)
+   |
+   = help: Remove definition: `clear_scene`
+
+chess/pieces_from_blend/pieces_stones_color/test_blend_pieces.py:9:15: SIM115 Use context handler for opening files
+   |
+ 7 | # Redirect Blender's stdout to /dev/null while keeping our stderr output
+ 8 | if not sys.stderr.isatty():  # Only do this when not in interactive mode
+ 9 |     devnull = open(os.devnull, 'w')
+   |               ^^^^ SIM115
+10 |     sys.stdout = devnull
+   |
+
+chess/pieces_from_blend/pieces_stones_color/test_blend_pieces.py:70:5: F811 Redefinition of unused `clear_scene` from line 31
+   |
+68 | }
+69 | 
+70 | def clear_scene():
+   |     ^^^^^^^^^^^ F811
+71 |     """Clear all objects and collections from the scene."""
+72 |     print("Clearing scene...", file=sys.stderr)
+   |
+   = help: Remove definition: `clear_scene`
+
+chess/pieces_from_blend/pieces_stones_color/test_blend_pieces.py:217:9: B018 Found useless expression. Either assign it to a variable or remove it.
+    |
+215 |     # Check if we're running inside Blender
+216 |     try:
+217 |         bpy.app.version  # This will raise AttributeError if not in Blender
+    |         ^^^^^^^^^^^^^^^ B018
+218 |         main()
+219 |     except (AttributeError, ImportError):
+    |
+
+chess/test_chess_generation.py:1:1: UP035 `typing.List` is deprecated, use `list` instead
+  |
+1 | from typing import List, Optional, Union
+  | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ UP035
+2 | 
+3 | from chess.config.models import (
+  |
+
+diagnostic/diagnostic_refactor.py:630:56: SIM112 Use capitalized environment variable `AZURE_OPENAI_API_VERSION_GPT41MINI` instead of `AZURE_OPENAI_API_VERSION_GPT41mini`
+    |
+628 |         provider_kwargs['endpoint'] = os.getenv("AZURE_OPENAI_ENDPOINT")
+629 |         if args.model_name == "gpt-4.1-mini":
+630 |             provider_kwargs['api_version'] = os.getenv("AZURE_OPENAI_API_VERSION_GPT41mini")
+    |                                                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ SIM112
+631 |             provider_kwargs['model_name'] = os.getenv("AZURE_OPENAI_MODEL_NAME_GPT41mini", "gpt-4.1-mini")
+632 |         elif args.model_name == "gpt-4.1":
+    |
+    = help: Replace `AZURE_OPENAI_API_VERSION_GPT41mini` with `AZURE_OPENAI_API_VERSION_GPT41MINI`
+
+diagnostic/diagnostic_refactor.py:631:55: SIM112 Use capitalized environment variable `AZURE_OPENAI_MODEL_NAME_GPT41MINI` instead of `AZURE_OPENAI_MODEL_NAME_GPT41mini`
+    |
+629 |         if args.model_name == "gpt-4.1-mini":
+630 |             provider_kwargs['api_version'] = os.getenv("AZURE_OPENAI_API_VERSION_GPT41mini")
+631 |             provider_kwargs['model_name'] = os.getenv("AZURE_OPENAI_MODEL_NAME_GPT41mini", "gpt-4.1-mini")
+    |                                                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ SIM112
+632 |         elif args.model_name == "gpt-4.1":
+633 |             provider_kwargs['api_version'] = os.getenv("AZURE_OPENAI_API_VERSION_GPT41")
+    |
+    = help: Replace `AZURE_OPENAI_MODEL_NAME_GPT41mini` with `AZURE_OPENAI_MODEL_NAME_GPT41MINI`
+
+evaluate_diagnose_dataset.py:1422:25: B007 Loop control variable `image_name` not used within loop body
+     |
+1420 |                     image_count = 0
+1421 | 
+1422 |                     for image_name, image_data in results["providers"][provider]["images"].items():
+     |                         ^^^^^^^^^^ B007
+1423 |                         if task in image_data["tasks"]:
+1424 |                             task_data = image_data["tasks"][task]
+     |
+     = help: Rename unused `image_name` to `_image_name`
+
+evaluate_diagnose_dataset.py:1849:17: B007 Loop control variable `provider` not used within loop body
+     |
+1847 |             f.write("\\cmidrule{2-" + str(len(providers) * metric_count + 1) + "}\n")
+1848 | 
+1849 |             for provider in providers:
+     |                 ^^^^^^^^ B007
+1850 |                 for name, key, _ in metric_columns:
+1851 |                     f.write(f"& {name} ")
+     |
+     = help: Rename unused `provider` to `_provider`
+
+evaluate_diagnose_dataset.py:1850:27: B007 Loop control variable `key` not used within loop body
+     |
+1849 |             for provider in providers:
+1850 |                 for name, key, _ in metric_columns:
+     |                           ^^^ B007
+1851 |                     f.write(f"& {name} ")
+1852 |             f.write("\\\\\n")
+     |
+     = help: Rename unused `key` to `_key`
+
+evaluation_pipeline/get_vlm.py:532:20: F401 `io` imported but unused; consider using `importlib.util.find_spec` to test for availability
+    |
+530 |         # Read image and get basic info
+531 |         try:
+532 |             import io
+    |                    ^^ F401
+533 | 
+534 |             from PIL import Image
+    |
+    = help: Remove unused import: `io`
+
+evaluation_pipeline/metrics_calculator.py:257:74: B023 Function definition does not bind loop variable `i`
+    |
+255 |             for i in range(self.target_dims):
+256 |                 try:
+257 |                     targets_dim_i = self.df['targets'].apply(lambda x: x[i] if isinstance(x, tuple) and len(x) > i else np.nan)
+    |                                                                          ^ B023
+258 |                     preds_dim_i = self.df['preds'].apply(lambda x: x[i] if isinstance(x, tuple) and len(x) > i else np.nan)
+259 |                 except IndexError: # Should not happen if _analyze_target_type is correct
+    |
+
+evaluation_pipeline/metrics_calculator.py:257:114: B023 Function definition does not bind loop variable `i`
+    |
+255 |             for i in range(self.target_dims):
+256 |                 try:
+257 |                     targets_dim_i = self.df['targets'].apply(lambda x: x[i] if isinstance(x, tuple) and len(x) > i else np.nan)
+    |                                                                                                                  ^ B023
+258 |                     preds_dim_i = self.df['preds'].apply(lambda x: x[i] if isinstance(x, tuple) and len(x) > i else np.nan)
+259 |                 except IndexError: # Should not happen if _analyze_target_type is correct
+    |
+
+evaluation_pipeline/metrics_calculator.py:258:70: B023 Function definition does not bind loop variable `i`
+    |
+256 |                 try:
+257 |                     targets_dim_i = self.df['targets'].apply(lambda x: x[i] if isinstance(x, tuple) and len(x) > i else np.nan)
+258 |                     preds_dim_i = self.df['preds'].apply(lambda x: x[i] if isinstance(x, tuple) and len(x) > i else np.nan)
+    |                                                                      ^ B023
+259 |                 except IndexError: # Should not happen if _analyze_target_type is correct
+260 |                     # This handles cases where some tuples might be shorter than expected, though
+    |
+
+evaluation_pipeline/metrics_calculator.py:258:110: B023 Function definition does not bind loop variable `i`
+    |
+256 |                 try:
+257 |                     targets_dim_i = self.df['targets'].apply(lambda x: x[i] if isinstance(x, tuple) and len(x) > i else np.nan)
+258 |                     preds_dim_i = self.df['preds'].apply(lambda x: x[i] if isinstance(x, tuple) and len(x) > i else np.nan)
+    |                                                                                                              ^ B023
+259 |                 except IndexError: # Should not happen if _analyze_target_type is correct
+260 |                     # This handles cases where some tuples might be shorter than expected, though
+    |
+
+evaluation_pipeline/metrics_calculator.py:376:13: B904 Within an `except` clause, raise exceptions with `raise ... from err` or `raise ... from None` to distinguish them from errors in exception handling
+    |
+374 |         except KeyError as e:
+375 |             # This should be caught by the check above, but as a safeguard:
+376 |             raise ValueError(f"Error during groupby operation. Ensure all group_by_cols exist: {e}")
+    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ B904
+377 | 
+378 |         all_grouped_metrics_results: list[dict[str, Any]] = []
+    |
+
+evaluation_pipeline/metrics_plotter.py:508:17: B007 Loop control variable `level` not used within loop body
+    |
+507 |             # Group by variable_col to calculate normalization factors
+508 |             for level, group in temp_df[valid_idx].groupby(self.variable_col):
+    |                 ^^^^^ B007
+509 |                 targets_group = pd.to_numeric(group['targets'], errors='coerce')
+510 |                 target_range = targets_group.max() - targets_group.min()
+    |
+    = help: Rename unused `level` to `_level`
+
+evaluation_pipeline/metrics_plotter.py:1215:102: E741 Ambiguous variable name: `l`
+     |
+1213 |                     # Prepare labels for CM
+1214 |                     unique_labels_cm = sorted(set(self.df['targets'].dropna().unique()).union(set(self.df['preds'].dropna().unique())) )
+1215 |                     unique_labels_cm = [int(l) if isinstance(l, float) and l.is_integer() else l for l in unique_labels_cm]
+     |                                                                                                      ^ E741
+1216 |                     cm_opts_with_labels = {**default_cm_opts, 'labels': unique_labels_cm}
+1217 |                     active_plot_functions.append((self.plot_confusion_matrix, cm_opts_with_labels, f"Confusion Matrix (Normalized: {default_cm_opts.get('normalize')})"))
+     |
+
+evaluation_pipeline/metrics_plotter.py:1256:118: E741 Ambiguous variable name: `l`
+     |
+1254 |                             if plot_key == 'confusion_matrix': # Special handling for CM labels
+1255 |                                 unique_labels_cm_ind = sorted(set(self.df['targets'].dropna().unique()).union(set(self.df['preds'].dropna().unique())) )
+1256 |                                 unique_labels_cm_ind = [int(l) if isinstance(l, float) and l.is_integer() else l for l in unique_labels_cm_ind]
+     |                                                                                                                      ^ E741
+1257 |                                 current_opts['labels'] = unique_labels_cm_ind
+     |
+
+evaluation_pipeline/metrics_plotter.py:1676:91: E741 Ambiguous variable name: `l`
+     |
+1674 |             # Infer labels for confusion matrix from the data
+1675 |             unique_labels = sorted(set(self.df['targets'].dropna().unique()).union(set(self.df['preds'].dropna().unique())))
+1676 |             unique_labels = [int(l) if isinstance(l, float) and l.is_integer() else l for l in unique_labels]
+     |                                                                                           ^ E741
+1677 | 
+1678 |             # Plot the confusion matrix with default parameters
+     |
+
+evaluation_pipeline/metrics_plotter.py:1778:91: E741 Ambiguous variable name: `l`
+     |
+1776 |         try:
+1777 |             unique_labels = sorted(set(self.df['targets'].dropna().unique()).union(set(self.df['preds'].dropna().unique())) )
+1778 |             unique_labels = [int(l) if isinstance(l, float) and l.is_integer() else l for l in unique_labels]
+     |                                                                                           ^ E741
+1779 |             self.plot_confusion_matrix(ax=axs[1, 0], labels=unique_labels, normalize=None)
+1780 |             axs[1, 0].set_title("Confusion Matrix", fontsize=axis_fontsize)
+     |
+
+evaluation_pipeline/metrics_plotter.py:1963:87: E741 Ambiguous variable name: `l`
+     |
+1961 |         unique_labels = sorted(set(df_diagnostic['target'].dropna().unique()).union(set(df_diagnostic['pred'].dropna().unique())))
+1962 |         # Convert to int if they are like 1.0, 2.0 etc.
+1963 |         unique_labels = [int(l) if isinstance(l, float) and l.is_integer() else l for l in unique_labels]
+     |                                                                                       ^ E741
+1964 | 
+1965 |         plotter_diagnostic.plot_confusion_matrix(
+     |
+
+evaluation_pipeline/metrics_plotter.py:2047:96: E741 Ambiguous variable name: `l`
+     |
+2045 |         fig_cm, ax_cm = plt.subplots(figsize=(10, 8)) # Adjusted size for CM
+2046 |         unique_labels_cm_indiv = sorted(set(df_diagnostic['target'].dropna().unique()).union(set(df_diagnostic['pred'].dropna().unique())) )
+2047 |         unique_labels_cm_indiv = [int(l) if isinstance(l, float) and l.is_integer() else l for l in unique_labels_cm_indiv]
+     |                                                                                                ^ E741
+2048 | 
+2049 |         plotter_diagnostic.plot_confusion_matrix(
+     |
+
+poker/card_dealer.py:101:9: B904 Within an `except` clause, raise exceptions with `raise ... from err` or `raise ... from None` to distinguish them from errors in exception handling
+    |
+ 99 |             inputs.max_river_cards = None
+100 |     except TypeError as e:
+101 |         raise ValueError(f"Invalid structure in card_distribution_inputs: {e}")
+    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ B904
+102 | 
+103 |     # Get max limits (use None if not set, indicating no limit)
+    |
+
+poker/card_overlap_builder.py:347:41: F401 `utils.blender_utils.render_scene` imported but unused; consider using `importlib.util.find_spec` to test for availability
+    |
+345 |         from scene_setup.general_setup import build_setup_from_config
+346 |         from scene_setup.rendering import clear_scene
+347 |         from utils.blender_utils import render_scene
+    |                                         ^^^^^^^^^^^^ F401
+348 |     except ImportError as e:
+349 |         print(f"Error importing necessary modules: {e}")
+    |
+    = help: Remove unused import: `utils.blender_utils.render_scene`
+
+poker/chip_dealer.py:71:9: B904 Within an `except` clause, raise exceptions with `raise ... from err` or `raise ... from None` to distinguish them from errors in exception handling
+   |
+69 |             inputs.min_piles_per_player = None
+70 |     except TypeError as e:
+71 |         raise ValueError(f"Invalid structure in chip_distribution_inputs: {e}")
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ B904
+72 | 
+73 |     player_pile_counts = [0] * num_players
+   |
+
+poker/config/models.py:337:13: B904 Within an `except` clause, raise exceptions with `raise ... from err` or `raise ... from None` to distinguish them from errors in exception handling
+    |
+335 |             mode_enum = CardTypeMode(mode_str)
+336 |         except ValueError:
+337 |             raise ValueError(f"Invalid CardTypeMode: {mode_str}. Must be one of {[m.value for m in CardTypeMode]}")
+    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ B904
+338 | 
+339 |         # Basic type checks for conditional required fields
+    |
+
+poker/config/models.py:481:19: B904 Within an `except` clause, raise exceptions with `raise ... from err` or `raise ... from None` to distinguish them from errors in exception handling
+    |
+479 |                  _ = ChipModel.from_dict(base_config)
+480 |              except (TypeError, ValueError) as e:
+481 |                   raise ValueError(f"Invalid 'base_chip_config': {e}")
+    |                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ B904
+482 |         elif not isinstance(base_config, ChipModel):
+483 |              raise TypeError("'base_chip_config' must be a dict or ChipModel instance.")
+    |
+
+poker/config/models.py:564:17: B904 Within an `except` clause, raise exceptions with `raise ... from err` or `raise ... from None` to distinguish them from errors in exception handling
+    |
+562 |                 _ = ChipPileModel.from_dict(base_pile_conf)
+563 |             except (TypeError, ValueError) as e:
+564 |                 raise ValueError(f"Invalid 'base_pile_config': {e}")
+    |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ B904
+565 |         elif not isinstance(base_pile_conf, ChipPileModel):
+566 |             raise TypeError("'base_pile_config' must be a dict or ChipPileModel")
+    |
+
+poker/config/models.py:574:14: B904 Within an `except` clause, raise exceptions with `raise ... from err` or `raise ... from None` to distinguish them from errors in exception handling
+    |
+572 |         except Exception as e:
+573 |              # Fallback if even default parsing fails (shouldn't happen)
+574 |              raise RuntimeError(f"Failed to create temporary default base pile model: {e}")
+    |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ B904
+575 |         temp_instance = cls(base_pile_config=temp_default_base_pile)
+    |
+
+poker/config/models.py:744:14: B904 Within an `except` clause, raise exceptions with `raise ... from err` or `raise ... from None` to distinguish them from errors in exception handling
+    |
+742 |             layout_mode_enum = LayoutMode(config['layout_mode'])
+743 |         except ValueError:
+744 |              raise ValueError(f"Invalid layout_mode: '{config['layout_mode']}'. Must be 'horizontal' or 'vertical'.")
+    |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ B904
+745 | 
+746 |         # Create a temporary instance to access defaults
+    |
+
+poker/dataset/generate_dataset.py:49:9: SIM102 Use a single `if` statement instead of nested `if` statements
+   |
+47 |                self.n_images = 1
+48 |   
+49 |           if self.variate_type in {"varying_random", "varying_all", "varying_among_range", "varying_all_range"}:
+   |  _________^
+50 | |             if self.variate_levels is None:
+   | |___________________________________________^ SIM102
+51 |                   raise ValueError(f"Varying type '{self.variate_type}' must have variate_levels")
+   |
+   = help: Combine `if` statements using `and`
+
+poker/dataset/generate_dataset.py:419:21: SIM102 Use a single `if` statement instead of nested `if` statements
+    |
+417 |                       variate_type = value.get('variate_type')
+418 |                       # Convert list to tuple for range types if appropriate
+419 |                       if variate_type in ['varying_all_range', 'varying_among_range'] and isinstance(variate_levels, list):
+    |  _____________________^
+420 | |                          # Check if it's a range like [min, max] or location range [[xmin,xmax],[ymin,ymax]]
+421 | |                          if not (len(variate_levels) == 2 and isinstance(variate_levels[0], list) and isinstance(variate_levels[1], list)):
+    | |___________________________________________________________________________________________________________________________________________^ SIM102
+422 |                                 variate_levels = tuple(variate_levels)
+    |
+    = help: Combine `if` statements using `and`
+
+poker/load_chip.py:131:13: SIM102 Use a single `if` statement instead of nested `if` statements
+    |
+129 |           found_existing = False
+130 |           for obj in bpy.data.objects:
+131 |               if obj.name.startswith(chip_object_name) and obj.library and obj.library.filepath == abs_blend_file_path:
+    |  _____________^
+132 | |                  # Check if it's NOT linked to the current scene collection yet
+133 | |                  if not obj.users_collection or not any(coll == bpy.context.collection for coll in obj.users_collection):
+    | |_________________________________________________________________________________________________________________________^ SIM102
+134 |                         linked_obj_instance = obj
+135 |                         found_existing = True
+    |
+    = help: Combine `if` statements using `and`
+
+poker/player_location_builder.py:42:9: B904 Within an `except` clause, raise exceptions with `raise ... from err` or `raise ... from None` to distinguish them from errors in exception handling
+   |
+40 |     except AttributeError:
+41 |         logger.error("Invalid table_conf format, expected a dictionary.")
+42 |         raise ValueError("Invalid table_conf format, expected a dictionary.")
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ B904
+43 | 
+44 |     if table_shape == "circular":
+   |
+
+poker/player_location_builder.py:62:13: B904 Within an `except` clause, raise exceptions with `raise ... from err` or `raise ... from None` to distinguish them from errors in exception handling
+   |
+60 |         except KeyError as e:
+61 |             logger.error(f"{e}")
+62 |             raise ValueError(str(e))
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^ B904
+63 |         except (ValueError, TypeError) as e:
+64 |              logger.error(f"Invalid dimension for circular table: {e}")
+   |
+
+poker/player_location_builder.py:65:14: B904 Within an `except` clause, raise exceptions with `raise ... from err` or `raise ... from None` to distinguish them from errors in exception handling
+   |
+63 |         except (ValueError, TypeError) as e:
+64 |              logger.error(f"Invalid dimension for circular table: {e}")
+65 |              raise ValueError(f"Invalid dimension for circular table: {e}")
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ B904
+66 | 
+67 |         if distribution_config.spacing_degrees is not None:
+   |
+
+poker/player_location_builder.py:91:13: B904 Within an `except` clause, raise exceptions with `raise ... from err` or `raise ... from None` to distinguish them from errors in exception handling
+   |
+89 |         except KeyError:
+90 |             logger.error("Rectangular layout requires 'length' and 'width' in table_conf.")
+91 |             raise ValueError("Rectangular layout requires 'length' and 'width' in table_conf.")
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ B904
+92 |         except (ValueError, TypeError) as e:
+93 |             logger.error(f"Invalid dimensions for rectangular table: {e}")
+   |
+
+poker/player_location_builder.py:94:13: B904 Within an `except` clause, raise exceptions with `raise ... from err` or `raise ... from None` to distinguish them from errors in exception handling
+   |
+92 |         except (ValueError, TypeError) as e:
+93 |             logger.error(f"Invalid dimensions for rectangular table: {e}")
+94 |             raise ValueError(f"Invalid dimensions for rectangular table: {e}")
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ B904
+95 | 
+96 |         # Factor to control how far players are placed from the edge towards the center.
+   |
+
+scene_setup/camera.py:12:38: B008 Do not perform function call `math.radians` in argument defaults; instead, perform the call within the function, or read the default from a module-level singleton variable
+   |
+11 | def create_camera_standard(location=(0, -35, 20),
+12 |                            rotation=(math.radians(60), 0, 0)):
+   |                                      ^^^^^^^^^^^^^^^^ B008
+13 |     """Create and position the camera."""
+14 |     # Move camera further back (y) and higher up (z)
+   |
+
+utils/blender_utils.py:52:9: SIM102 Use a single `if` statement instead of nested `if` statements
+   |
+50 |       gpu_devices = []
+51 |       for device in devices:
+52 |           if device.type in ['CUDA', 'OPTIX']:
+   |  _________^
+53 | |             # Extract the PCI ID from the device ID to identify unique GPUs
+54 | |             if hasattr(device, 'id') and '_' in device.id:
+   | |__________________________________________________________^ SIM102
+55 |                   pci_id = device.id.split('_')[2]  # Get the PCI ID part
+56 |                   gpu_devices.append((device, pci_id))
+   |
+   = help: Combine `if` statements using `and`
+
+Found 47 errors.
