@@ -1,0 +1,49 @@
+dataset:
+  name: "default_dataset"
+  output_dir: "output/default"
+  piece_set: "old_school"
+
+chess:
+  count_config:
+    type: "preset"
+    value: "low"
+    randomization: false
+  type_config:
+    spec_type: "random_n"
+    value: 1
+  position_config:
+    type: "spread"
+    value: "medium"
+    start_point: "center"
+  board_config:
+    length: 0.7
+    width: 0.7
+    thickness: 0.05
+    location: [0, 0, 0.9]
+
+scene:
+  camera:
+    distance: 2.5
+    angle: 50.0
+    horizontal_angle: 0.0
+    randomize_distance: false
+    randomize_distance_percentage: 0.1
+    randomize_angle: false
+    randomize_angle_percentage: 0.1
+  render:
+    engine: "CYCLES"
+    samples: 4096
+    resolution_x: 1920
+    resolution_y: 1080
+    gpu_enabled: True
+  lighting:
+    type: "medium"
+  table:
+    shape: "elliptic"
+    length: 2.5
+    width: 1.8
+    height: 0.8
+
+noise:
+  blur: "none"
+  table_texture: "low"

@@ -1,0 +1,74 @@
+dataset:
+  name: count_blur
+  output_dir:  /home/count_blur_test
+  seed: 12345 # Global seed for the dataset generation process
+  base_config: poker/dataset/dataset_configs/default_config.yml # Link to the base config
+
+variables:
+  n_players:
+    variate_type: fixed
+    variate_levels: 4 # Keep number of players fixed at 4
+    n_images: 1 # Needs to match the n_images of the varying parameter(s)
+
+  # just set community cards to 5
+  card_distribution_inputs.river_cards:
+    variate_type: varying_all
+    variate_levels: [5,4,3,2,1]
+    n_images: 1
+
+
+  community_cards.card_gap.base_gap_x:
+    variate_type: fixed
+    variate_levels: 0.1
+    n_images: 1
+
+  card_type_config.mode:
+    variate_type: fixed
+    variate_levels: "full_deck"
+    n_images: 1
+    
+  card_type_config.allow_repetition:
+    variate_type: fixed
+    variate_levels: True # Use standard deck dealing
+    n_images: 1
+
+  card_distribution_inputs.n_verso:
+    variate_type: fixed
+    variate_levels: 0
+    n_images: 1
+
+  scene_setup.table.shape:
+    variate_type: fixed
+    variate_levels: "rectangular"
+    n_images: 1
+  
+  scene_setup.table.width:
+    variate_type: fixed
+    variate_levels: 0.7
+    n_images: 1
+
+  # Fixed the duplicate key issue - keeping only one table length configuration
+  scene_setup.table.length:
+    variate_type: fixed
+    variate_levels: 1.3
+    n_images: 1
+
+  scene_setup.render.samples:
+    variate_type: fixed
+    variate_levels: 4096
+    n_images: 1
+
+  scene_setup.render.resolution.width:    
+    variate_type: fixed
+    variate_levels: 1920
+    n_images: 1
+
+  scene_setup.render.resolution.height:
+    variate_type: fixed
+    variate_levels: 1080
+    n_images: 1
+
+  noise.blur:
+    variate_type: "varying_all"
+    variate_levels: [0.5, 1.0, 2.0, 3.0, 4.0, 5.0]
+    n_images: 10

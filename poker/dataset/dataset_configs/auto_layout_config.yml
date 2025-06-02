@@ -1,0 +1,73 @@
+# poker/dataset/dataset_configs/auto_layout_config.yml
+# Example configuration using automatic player layout generation.
+
+# --- Top Level Scene Settings ---
+n_players: 5 # Generate 4 players automatically
+deck_blend_file: null
+random_seed: 54321
+
+# --- General Scene Setup ---
+scene_setup:
+  camera:
+    distance: 4.0
+    angle: 55.0
+  lighting:
+    lighting: "medium"
+  table:
+    shape: "rectangular"
+    length: 2.2 # Used for circular layout radius
+    width: 1.2
+  render:
+    engine: "CYCLES"
+    samples: 16 # Quick test
+    resolution: {width: 512, height: 512}
+    gpus_enabled: true
+
+# --- Player Generation Config ---
+# NOTE: The 'players' list is intentionally MISSING/empty.
+# We provide a template instead.
+
+default_player_config:
+  player_id: "DefaultPlayer" # Will be overridden (e.g., Player_1, Player_2)
+  hand_config:
+    # card_names: [] # Card names will be handled by card distribution later
+    n_cards: 2 # Default card count (will be adjusted by CardDistribution later)
+    # location: [0, 0, 0] # LOCATION WILL BE OVERRIDDEN by player distribution
+    scale: 0.1
+    spread_factor_h: 0.4
+    spread_factor_v: 0.1
+    first_card_std_dev: 0.02
+    rotation_std_dev: 0.08
+    n_verso: 0
+    verso_loc: 'ordered'
+    randomize_gap_h: false
+    randomize_gap_v: false
+    random_seed: null # Player-specific seed could be handled by distribution later
+  chip_area_config: null # No chips for this simple test
+
+player_distribution_config:
+  layout: "circular"
+  # n_players: null # Inherits from top-level n_players
+  spacing_degrees: null # Auto-calculate spacing for n_players
+  start_angle_degrees: 45.0 # Start the first player at 45 degrees
+  trigonometric_direction: true # Counter-clockwise
+
+# --- Community Cards Section Added Back (without n_cards/card_names) --- 
+community_cards:
+  start_location: [-0.4, 0.0, 0.91] # Custom location
+  scale: 0.12 # Custom scale
+  n_verso: 1 # Specify 1 verso card (will be handled by dealer if names assigned)
+  verso_loc: random # Specify random verso placement
+  card_gap: { base_gap_x: 0.18, base_gap_y: 0.01, random_gap: true, random_percentage: 0.1 } # Custom gap
+  # n_cards: ? # Intentionally omitted - should be set by dealer (to 5)
+  # card_names: ? # Intentionally omitted - should be set by dealer 
+
+# --- Card Distribution --- 
+card_distribution_inputs:
+  overall_cards: 11 
+  river_cards: 5 # Dealer should deal exactly 5 to river
+  # player_cards: null # Dealer should distribute remaining 6 randomly to players
+  # min_cards_per_player: null
+
+# --- Chip Distribution (Placeholder - not used yet) ---
+# chip_distribution_config: {}

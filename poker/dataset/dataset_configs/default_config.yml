@@ -1,0 +1,105 @@
+# Default base configuration for dataset generation.
+# Individual parameters will be overridden by poker_variations.yml
+
+# --- Top Level Scene Settings ---
+n_players: 4 # Default number of players for generation
+deck_blend_file: null # Use default deck built into the loader
+random_seed: null # Can be overridden by dataset seed or variations
+output_path: "poker/img/generated_scene.png" # Placeholder, dataset generator will define pattern
+
+# scene setup
+scene_setup:
+  camera:
+    distance: 3.7
+    angle: 72
+    horizontal_angle: 0
+  lighting:
+    lighting: "medium"
+  table:
+    shape: "rectangular" 
+    width: 1.5
+    length: 2.4 
+    felt_color: (0.1, 0.4, 0.15, 1.0)
+  render:
+    engine: "CYCLES"
+    samples: 4096
+    resolution: {width: 1920, height: 1080}
+    gpus_enabled: true # Assume GPU available for dataset generation
+
+# --- Default Player Configuration (Used when players are generated) ---
+default_player_config:
+  player_id: "Player_X" # Placeholder, will be numbered
+  hand_config:
+    # n_cards: null # Determined by card distribution
+    # card_names: null # Determined by card distribution
+    scale: 0.10
+    spread_factor_h: 0.4
+    spread_factor_v: 0.03
+    first_card_std_dev: 0.01
+    rotation_std_dev: 0.03
+    # n_verso: 0 # Handled by card distribution
+    # verso_loc: 'ordered' # Handled by card distribution
+    randomize_gap_h: false
+    randomize_gap_v: false
+    random_seed: null # Uses player-specific seed if needed
+  chip_area_config:
+    # n_piles: null # Determined by chip distribution
+    base_pile_config: 
+      n_chips: 2 # Base default, will be overridden by resolved pile config
+      base_chip_config: 
+        chip_object_name: "Cylinder001" # CORRECTED - USE ACTUAL NAME FROM CHIPS.blend
+        scale: 0.05 # Base default, will be overridden by resolved pile config
+        color: null # Base default, will be overridden by resolved pile config
+        blend_file_path: null # Use default chip object blend file path (likely defined elsewhere or default)
+      # location: null # Determined by layout
+      spread_factor: 0.1 
+      vertical_gap: 0.002
+      random_seed: null # Uses pile-specific seed if needed
+    # --- Pile Layout ---
+    pile_gap_h: 0.03 
+    pile_gap_random_factor: 0.4 
+    pile_gap_v_range: 0.01 
+    placement_offset_from_cards: 0.25 
+    random_seed: null # Uses area-specific seed if needed
+
+# --- Default Community Cards Layout (Counts determined by distribution) ---
+community_cards:
+  # n_cards: null # Determined by card distribution
+  # card_names: null # Determined by card distribution
+  start_location: [-0.3, 0.0, 0.91] # Centered on the table
+  scale: 0.09
+  # n_verso: 0 # Handled by card distribution
+  # verso_loc: 'ordered' # Handled by card distribution
+  card_gap:
+    base_gap_x: 0.08
+    base_gap_y: 0.005
+    random_gap: false
+    random_percentage": 0.2
+  random_seed: null # Uses specific seed if needed
+
+# --- Card Type Definition ( Pool of cards available) ---
+card_type_config:
+  mode: "full_deck" # Default: Use all 52 cards
+  subset_n: null 
+  card_list: null 
+  suit: null 
+  allow_repetition: false # Default: Standard poker deck (no repetition)
+
+# --- Card Distribution Inputs (Defines *how many* cards go where) ---
+# These values are often the ones varied in poker_variations.yml
+card_distribution_inputs:
+  overall_cards: null # To be varied
+  river_cards: null   # Can be set/varied
+  player_cards: null  # Can be set/varied (e.g., fixed int per player)
+  min_cards_per_player: null # Can be set/varied
+  n_verso: 0 # Default to 0 face-down cards
+
+# --- Chip Distribution Inputs (Defines *how many* piles/chips go where) ---
+# Set to null by default, activate if varying chips.
+chip_distribution_inputs: {} # Changed from null to empty dictionary
+  # overall_piles: null
+  # piles_per_player: null
+  # min_piles_per_player: null
+  # n_chips_options: null
+  # color_options: null
+  # scale_options: null 

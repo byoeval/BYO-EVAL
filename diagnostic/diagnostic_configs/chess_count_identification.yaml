@@ -1,0 +1,7 @@
+game: chess
+fixed_variables_exact: {}
+fixed_variables_range:
+  "piece_types": [2, 999]
+variables_to_test: {}
+question_keys: ["count_identification_piece_type"]
+max_images_per_level: 10

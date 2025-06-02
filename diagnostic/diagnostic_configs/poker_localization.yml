@@ -1,0 +1,6 @@
+game: poker
+fixed_variables_exact: {}
+fixed_variables_range: {}
+variables_to_test: {}
+question_keys: ["localize_card_on_grid_3x3"]
+max_images_per_level: 50

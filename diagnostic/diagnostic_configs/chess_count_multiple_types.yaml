@@ -1,0 +1,7 @@
+game: chess
+fixed_variables_exact: {}
+fixed_variables_range:
+  "piece_type_count": [2, 999]  # Filter for images with more than 2 piece types
+variables_to_test: {}
+question_keys: ["count_identification_piece_type", "count_pieces"]
+max_images_per_level: 10 

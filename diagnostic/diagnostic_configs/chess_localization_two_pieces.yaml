@@ -1,0 +1,6 @@
+game: chess
+fixed_variables_exact: {}
+fixed_variables_range: {}
+variables_to_test: {}
+question_keys: ["localize_rows_between_two_pieces", "localize_columns_between_two_pieces"]
+max_images_per_level: 1

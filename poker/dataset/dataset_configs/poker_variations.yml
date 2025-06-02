@@ -1,0 +1,32 @@
+dataset:
+  name: poker_overall_cards_variation
+  output_dir:  /home/count_cards 
+  seed: 12345 # Global seed for the dataset generation process
+  base_config: poker/dataset/dataset_configs/default_config.yml # Link to the base config
+
+variables:
+  n_players:
+    variate_type: fixed
+    variate_levels: 4 # Keep number of players fixed at 4
+    n_images: 1 # Needs to match the n_images of the varying parameter(s)
+
+  card_distribution_inputs.overall_cards:
+    variate_type: varying_all_range
+    variate_levels: [1, 15] # Vary total cards from 1
+    n_images: 10
+
+  card_type_config.mode:
+    variate_type: fixed
+    variate_levels: "full_deck"
+    n_images: 1
+    
+  card_type_config.allow_repetition:
+    variate_type: fixed
+    variate_levels: True # Use standard deck dealing
+    n_images: 1
+
+  card_distribution_inputs.n_verso:
+    variate_type: fixed
+    variate_levels: 0 # Keep all cards face up for now
+    n_images: 1
+    

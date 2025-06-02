@@ -1,0 +1,61 @@
+dataset:
+  name: poker_chip_variations
+  output_dir: /home/cards_chip_standard # Adjust path as needed
+  seed: 5678 # Global seed for the dataset generation process
+  base_config: poker/dataset/dataset_configs/default_config.yml # Link to the base config
+
+variables:
+  n_players:
+    variate_type: fixed
+    variate_levels: 4 # Keep number of players fixed at 4
+    n_images: 1 # Needs to match the n_images of the varying parameter(s)
+
+  card_distribution_inputs.overall_cards:
+    variate_type: varying_all_range
+    variate_levels: [2, 15] # Vary total cards from 1
+    n_images: 2
+
+  card_type_config.mode:
+    variate_type: fixed
+    variate_levels: "full_deck"
+    n_images: 1
+
+  card_type_config.allow_repetition:
+    variate_type: fixed
+    variate_levels: True # Standard deck dealing
+    n_images: 1
+
+  # --- Chip Variation Setup ---
+  chip_distribution_inputs.overall_piles:
+    variate_type: varying_all_range # Vary the number of piles EACH player gets (0 to 4)
+    variate_levels: [2,15]
+    n_images: 1 # Generate 5 images, one for each pile count (0, 1, 2, 3, 4)
+
+
+  chip_distribution_inputs.max_piles_per_player:
+    variate_type: fixed
+    variate_levels: 4
+    n_images: 1
+
+  chip_distribution_inputs.n_chips_options:
+    variate_type: fixed
+    variate_levels: [5,10,15,20,30] # Randomly choose 5, 10, or 15 chips per generated pile
+    n_images: 1
+
+  chip_distribution_inputs.color_options:
+    variate_type: fixed
+    # Define 4 colors (RGBA): Red, Blue, Green, White (alpha=1)
+    variate_levels: [ [1.0, 0.0, 0.0, 1.0], [0.0, 0.0, 1.0, 1.0], [0.0, 1.0, 0.0, 1.0], [1.0, 1.0, 1.0, 1.0] ]
+    n_images: 1
+
+  chip_distribution_inputs.scale_options:
+    variate_type: fixed
+    variate_levels: [0.04, 0.06, 0.08] # Randomly choose one of these scales per generated pile
+    n_images: 1
+
+  # --- Ensure default chip config is minimal in base_config or override here ---
+  # Example: Ensure base chip exists if not in default
+  # default_player_config.chip_area_config.base_pile_config.base_chip_config.chip_object_name:
+  #   variate_type: fixed
+  #   variate_levels: "DefaultChipObject" # Make sure this object exists in your chip blend file
+  #   n_images: 1 

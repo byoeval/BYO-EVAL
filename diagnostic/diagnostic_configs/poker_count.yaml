@@ -1,0 +1,6 @@
+game: poker
+fixed_variables_exact: {}
+fixed_variables_range: {}
+variables_to_test: {"card_number": [2,3,4,5,6,7,8,9,10,11,12,13,14,15]}
+question_keys: ["count_total_cards"]
+max_images_per_level: 15

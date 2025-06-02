@@ -1,0 +1,26 @@
+dataset:
+  name: "identification_distance"
+  output_dir: "/home/identification_distance"
+  piece_set: "old_school"
+
+variables:
+  chess.count_config:
+    variate_type: "fixed"
+    variate_levels: 1
+    n_images: 1
+  chess.type_config:
+    variate_type: "fixed"
+    variate_levels: 1
+    n_images: 1
+  chess.position_config.uniform:
+    variate_type: "fixed"
+    variate_levels: true
+    n_images: 1
+  chess.board_config.row_columns:
+    variate_type: "fixed"
+    variate_levels: 8
+    n_images: 1
+  scene.camera.distance:
+    variate_type: "varying_all"
+    variate_levels: [1.7, 2.5, 3.5, 4.5, 5.5, 6.5, 7.5]
+    n_images: 20

@@ -1,0 +1,38 @@
+dataset:
+  name: "count"
+  output_dir: "/home/count_identification"
+  piece_set: "old_school"
+
+variables:
+  chess.count_config:
+    variate_type: "varying_all_range"
+    variate_levels: [2, 10]
+    n_images: 30
+    randomize: false
+  chess.type_config:
+    variate_type: "fixed"
+    variate_levels: 4
+    n_images: 1
+  chess.position_config.spread_level:
+    variate_type: "fixed"
+    variate_levels: "medium"
+  chess.position_config.start_point:
+    variate_type: "fixed"
+    variate_levels: "center"
+  scene.camera.distance:
+    variate_type: "fixed"
+    variate_levels: 2.5
+    n_images: 1
+  scene.camera.angle:
+    variate_type: "fixed"
+    variate_levels: 50
+    n_images: 1
+  scene.render.resolution_x:
+    variate_type: "fixed"
+    variate_levels: 1920
+  scene.render.resolution_y:
+    variate_type: "fixed"
+    variate_levels: 1080
+  noise.blur:
+    variate_type: "fixed"
+    variate_levels: "none"

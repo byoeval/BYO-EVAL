@@ -1,0 +1,23 @@
+dataset:
+  name: "localization_easy_board"
+  output_dir: "/home/absolute_localization"
+  piece_set: "old_school"
+
+variables:
+  chess.count_config:
+    variate_type: "fixed"
+    variate_levels: 1
+    n_images: 1
+    randomize: false
+  chess.type_config:
+    variate_type: "fixed"
+    variate_levels: 1
+    n_images: 1
+  chess.position_config.uniform:
+    variate_type: "fixed"
+    variate_levels: true
+    n_images: 50
+  chess.board_config.row_columns:
+    variate_type: "fixed"
+    variate_levels: 4
+    n_images: 1

@@ -1,0 +1,22 @@
+dataset:
+  name: "identification"
+  output_dir: "/home/identification"
+  piece_set: "old_school"
+
+variables:
+  chess.count_config:
+    variate_type: "fixed"
+    variate_levels: 1
+    n_images: 1
+  chess.type_config:
+    variate_type: "varying_all"
+    variate_levels: ["Pawn", "Knight", "Bishop", "Rook", "Queen", "King"]
+    n_images: 5
+  chess.position_config.uniform:
+    variate_type: "fixed"
+    variate_levels: true
+    n_images: 1
+  chess.board_config.row_columns:
+    variate_type: "fixed"
+    variate_levels: 8
+    n_images: 1

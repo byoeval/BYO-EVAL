@@ -1,0 +1,6 @@
+game: poker
+fixed_variables_exact: {}
+fixed_variables_range: {}
+variables_to_test: {}
+question_keys: ["identify_cards"]
+max_images_per_level: 15

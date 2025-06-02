@@ -1,0 +1,6 @@
+game: chess
+fixed_variables_exact: {}
+fixed_variables_range: {}
+variables_to_test: {"camera_distance": [1.7, 3.5, 5.5, 7.5]}
+question_keys: ["identify_type_one_piece"]
+max_images_per_level: 15

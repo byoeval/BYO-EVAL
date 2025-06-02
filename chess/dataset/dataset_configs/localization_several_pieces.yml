@@ -1,0 +1,29 @@
+dataset:
+  name: "localization_2_pieces_board_8x8"
+  output_dir: "/home/localization_several_pieces/2_pieces_board_8x8"
+  piece_set: "old_school"
+
+variables:
+  chess.count_config:
+    variate_type: "fixed"
+    variate_levels: 2
+    n_images: 1
+  chess.count_config.spec_type:
+    variate_type: "fixed"
+    variate_levels: "explicit"
+  chess.count_config.counts:
+    variate_type: "fixed" 
+    variate_levels: {"Pawn": 1, "Knight": 1, "Bishop": 1}
+    n_images: 1
+  chess.type_config:
+    variate_type: "fixed"
+    variate_levels: 1
+    n_images: 1
+  chess.position_config.uniform:
+    variate_type: "fixed"
+    variate_levels: true
+    n_images: 50
+  chess.board_config.row_columns:
+    variate_type: "fixed"
+    variate_levels: 8
+    n_images: 1
