@@ -1,6 +1,6 @@
 dataset:
   name: count_blur
-  output_dir:  /home/count_blur_test
+  output_dir:  tests
   seed: 12345 # Global seed for the dataset generation process
   base_config: poker/dataset/dataset_configs/default_config.yml # Link to the base config
 

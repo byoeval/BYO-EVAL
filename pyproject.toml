@@ -1,0 +1,130 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "byo-eval"
+version = "0.1.0"
+description = "Scene generation and evaluation framework for VLM with Blender"
+readme = "README.md"
+requires-python = ">=3.10,<3.11"
+license = {text = "MIT"}
+authors = [
+    {name = "Ludovic Arnould", email = "ludovic.arnould.cau@gmail.com"},
+    {name = "Salim Khazem", email = "salimkhazem97@gmail.com"},
+]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+    "Topic :: Multimedia :: Graphics :: 3D Rendering",
+]
+
+keywords = ["blender", "scene-generation", "evaluation", "vlm", "diagnostic"]
+
+dependencies = [
+    "bpy==4.0.0",
+    "mathutils==3.3.0",
+    "numpy>=1.24.0,<2.0",
+    "python-dotenv==1.1.0",
+    "openai==1.75.0",
+    "PyYAML==6.0.2",
+    "pandas==2.2.0",
+    "rich==13.9.4",
+    "scikit-learn==1.5.2",
+    "seaborn==0.13.2",
+    "matplotlib==3.9.4",
+    "groq==0.11.0",
+    "huggingface-hub==0.28.1",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.0.0",
+    "pytest-cov>=4.0.0",
+    "ruff>=0.1.0",
+    "mypy>=1.0.0",
+    "black>=23.0.0",
+    "isort>=5.12.0",
+]
+test = [
+    "pytest>=7.0.0",
+    "pytest-cov>=4.0.0",
+    "pytest-mock>=3.10.0",
+]
+docs = [
+    "sphinx>=5.0.0",
+    "sphinx-rtd-theme>=1.2.0",
+    "myst-parser>=0.18.0",
+]
+
+[project.urls]
+Homepage = "https://github.com/byoeval/BYO-EVAL"
+Repository = "https://github.com/byoeval/BYO-EVAL"
+"Bug Tracker" = "https://github.com/byoeval/BYO-EVAL/issues"
+
+[project.scripts]
+byo-eval = "byo_eval.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["chess*", "poker*", "evaluation_pipeline*"]
+exclude = ["tests*", "docs*"]
+
+[tool.ruff]
+# Target Python 3.10+ (adjust based on your requirements)
+target-version = "py310"
+
+# Line length (PEP 8 standard)
+line-length = 88
+
+# Files to exclude from linting
+exclude = [
+    ".git",
+    "__pycache__",
+    "*.egg-info",
+    ".venv",
+    "venv",
+    "build",
+    "dist",
+]
+
+[tool.ruff.lint]
+# Enable specific rule categories
+select = [
+    "E",    # pycodestyle errors
+    "W",    # pycodestyle warnings  
+    "F",    # pyflakes
+    "I",    # isort (import sorting)
+    "UP",   # pyupgrade
+    "B",    # flake8-bugbear
+    "C4",   # flake8-comprehensions
+    "PIE",  # flake8-pie
+    "SIM",  # flake8-simplify
+]
+
+# Ignore specific rules that are less critical or harder to fix
+ignore = [
+    "E402",  # Module level import not at top of file (common in your codebase)
+    "E701",  # Multiple statements on one line (colon) - can be fixed later
+    "F841",  # Local variable assigned but never used - can be cleaned up later
+    "B008",  # Do not perform function calls in argument defaults
+    "B904",  # Exception chaining (raise ... from e) - already fixed
+]
+
+# Allow unfixable violations to be reported
+unfixable = ["F401", "F841"]
+
+[tool.ruff.lint.per-file-ignores]
+"__init__.py" = ["F401"]  # Allow unused imports in __init__.py files
+"tests/**/*.py" = ["E501", "F401", "F811"]  # Allow longer lines and imports in tests
+
+[tool.ruff.lint.isort]
+known-first-party = ["byo_eval"]
+force-single-line = false
+lines-after-imports = 2

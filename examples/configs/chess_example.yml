@@ -1,0 +1,41 @@
+# Example Chess Dataset Configuration
+# This configuration generates a small chess dataset with varying piece counts and board positions
+
+dataset:
+  name: "example_chess_dataset"
+  output_dir: "/app/output/chess_example"
+  seed: 42
+  piece_set: "default"  # Options: "default", "old_school", "stones_color"
+
+variables:
+  # Number of pieces on the board
+  chess.count_config:
+    variate_type: "varying_all"
+    variate_levels: [8, 16, 24, 32]  # Different piece counts
+    n_images: 2  # Generate 2 images per piece count
+
+  # Board position and rotation
+  chess.board_config.location:
+    variate_type: "fixed"
+    variate_levels: [0, 0, 0.9]  # Fixed board position [x, y, z]
+
+  chess.board_config.rotation:
+    variate_type: "varying_among_range"
+    variate_levels: [0, 360]  # Random rotation between 0 and 360 degrees
+    n_images: 3  # 3 different rotations per other combination
+
+  # Piece distribution strategy
+  chess.position_config.spread_level:
+    variate_type: "varying_all"
+    variate_levels: ["low", "medium", "high"]  # Different spread levels
+    n_images: 1
+
+  # Camera settings (optional)
+  # Uncomment to vary camera position
+  # scene_config.camera.location:
+  #   variate_type: "varying_among_range"
+  #   variate_levels: [[5, 15], [5, 15], [8, 12]]  # [x_range, y_range, z_range]
+  #   n_images: 2
+
+# This configuration will generate:
+# 4 piece counts × 2 images × 3 rotations × 3 spread levels = 72 images total 

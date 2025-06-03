@@ -1,0 +1,44 @@
+# Example Poker Dataset Configuration
+# This configuration generates a poker dataset with varying player configurations and chip counts
+
+dataset:
+  name: "example_poker_dataset"
+  output_dir: "/app/output/poker_example"
+  seed: 42
+
+variables:
+  # Number of players at the table
+  poker.num_players:
+    variate_type: "varying_all"
+    variate_levels: [2, 4, 6]  # 2, 4, or 6 players
+    n_images: 2  # 2 images per player count
+
+  # Player 1 chip count
+  poker.players.0.chip_count:
+    variate_type: "varying_among_range"
+    variate_levels: [100, 1000]  # Random between 100 and 1000 chips
+    n_images: 3  # 3 different chip counts per combination
+
+  # Player 1 hand cards (number of cards in hand)
+  poker.players.0.hand_cards:
+    variate_type: "varying_all"
+    variate_levels: [0, 2]  # Either no cards or 2 cards
+    n_images: 1
+
+  # Community cards (river cards)
+  poker.river.num_cards:
+    variate_type: "varying_all"
+    variate_levels: [0, 3, 5]  # Flop (3), Turn (4), or River (5) stage
+    n_images: 1
+
+  # Table noise/texture variation
+  noise.table_texture:
+    variate_type: "varying_among_range"
+    variate_levels: [0.0, 0.3]  # Random texture noise between 0 and 0.3
+    n_images: 2
+
+  # Lighting variation
+  noise.light:
+    variate_type: "varying_among_range"
+    variate_levels: [0.8, 1.2]  # Light intensity variation
+    n_images: 2 

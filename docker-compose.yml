@@ -1,0 +1,83 @@
+version: '3.8'
+
+services:
+  byo-eval:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: final
+    image: byo-eval:latest
+    container_name: byo-eval-container
+    
+    # Environment variables
+    environment:
+      - DISPLAY=:99
+      - PYTHONPATH=/app
+      - BLENDER_USER_SCRIPTS=/app/scripts
+    
+    # Volume mounts for data persistence
+    volumes:
+      # Input configurations and data
+      - ./configs:/app/input:ro
+      - ./data:/app/data
+      # Output directory
+      - ./output:/app/output
+      # Optional: Mount additional datasets
+      - ./datasets:/app/datasets:ro
+      # Optional: Cache directory for models/downloads
+      - ./cache:/app/cache
+    
+    # Working directory
+    working_dir: /app
+    
+    # Default command
+    command: ["help"]
+    
+    # Resource limits (adjust as needed)
+    deploy:
+      resources:
+        limits:
+          cpus: '4.0'
+          memory: 8G
+        reservations:
+          cpus: '2.0'
+          memory: 4G
+    
+    # Enable TTY for interactive use
+    tty: true
+    stdin_open: true
+    
+    # Restart policy
+    restart: unless-stopped
+
+  # Optional: Service for running evaluations with GPU support
+  byo-eval-gpu:
+    extends: byo-eval
+    container_name: byo-eval-gpu-container
+    
+    # GPU support (requires nvidia-docker)
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    
+    # Override command for GPU-intensive tasks
+    command: ["bash"]
+    
+    profiles:
+      - gpu  # Only start when explicitly requested
+
+# Named volumes for persistent data
+volumes:
+  byo_eval_cache:
+    driver: local
+  byo_eval_models:
+    driver: local
+
+# Networks
+networks:
+  default:
+    name: byo-eval-network 
