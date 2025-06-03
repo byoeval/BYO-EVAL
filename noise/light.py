@@ -4,7 +4,7 @@ from typing import Any
 import bpy
 from mathutils import Euler
 
-from Noise.models import LightNoiseModel
+from noise.models import LightNoiseModel
 
 
 def remove_all_lights():

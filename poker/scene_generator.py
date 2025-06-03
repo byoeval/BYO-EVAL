@@ -16,7 +16,7 @@ if workspace_root not in sys.path:
     sys.path.append(workspace_root)
 
 # Models and Builders
-from Noise.set_noise_config import build_noise_from_config  # Import noise module
+from noise.set_noise_config import build_noise_from_config  # Import noise module
 from poker.card_overlap_builder import (
     build_card_overlap_layout_from_config,  # Import the overlap builder
 )

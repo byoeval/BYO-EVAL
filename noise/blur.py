@@ -2,7 +2,7 @@ from typing import Any
 
 import bpy
 
-from Noise.models import BlurNoiseModel
+from noise.models import BlurNoiseModel
 
 
 def setup_blur(intensity="none"):

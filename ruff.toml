@@ -50,7 +50,7 @@ ignore = [
 # Configure isort
 [lint.isort]
 # Group imports properly
-known-first-party = ["poker", "scene_setup", "utils", "src", "evaluation_pipeline", "chess", "diagnostic", "Noise"]
+known-first-party = ["poker", "scene_setup", "utils", "src", "evaluation_pipeline", "chess", "diagnostic", "noise"]
 
 # Configure mccabe
 [lint.mccabe]

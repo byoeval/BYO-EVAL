@@ -2,10 +2,10 @@ from typing import Any
 
 import bpy
 
-from Noise.blur import build_blur_from_config
-from Noise.light import build_lighting_from_config
-from Noise.models import NoiseConfigModel
-from Noise.table_texture import build_table_texture_from_config
+from noise.blur import build_blur_from_config
+from noise.light import build_lighting_from_config
+from noise.models import NoiseConfigModel
+from noise.table_texture import build_table_texture_from_config
 
 
 def build_noise_from_config(

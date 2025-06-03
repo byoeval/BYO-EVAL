@@ -6,7 +6,7 @@ import bpy
 from chess.board import ChessBoard
 from chess.generate_legend import generate_legend
 from chess.pieces.factories import PieceFactory
-from Noise.set_noise_config import build_noise_from_config
+from noise.set_noise_config import build_noise_from_config
 from scene_setup.general_setup import build_setup_from_config
 from scene_setup.rendering import clear_scene
 

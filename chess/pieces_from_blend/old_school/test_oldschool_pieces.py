@@ -185,17 +185,15 @@ def main():
     # Set up render output
     print("\nSetting up render:", file=sys.stderr)
     bpy.context.scene.render.image_settings.file_format = 'PNG'
-    output_dir = os.path.join(project_root, "output")
+    output_dir = os.path.join(project_root, "test")
     os.makedirs(output_dir, exist_ok=True)
 
     # Set up file paths for both render and blend file
     base_name = "test_oldschool_pieces"
     render_path = os.path.join(output_dir, f"{base_name}_render.png")
-    blend_path = os.path.join(output_dir, f"{base_name}.blend")
 
     bpy.context.scene.render.filepath = render_path
     print(f"- Output render path: {render_path}", file=sys.stderr)
-    print(f"- Output blend path: {blend_path}", file=sys.stderr)
 
     # Print scene statistics
     print("\nScene statistics:", file=sys.stderr)
@@ -206,8 +204,6 @@ def main():
 
     # Save the blend file
     print("\nSaving blend file...", file=sys.stderr)
-    bpy.ops.wm.save_as_mainfile(filepath=blend_path)
-    print(f"Blend file saved to {blend_path}", file=sys.stderr)
 
     # Render
     print("\nStarting render...", file=sys.stderr)

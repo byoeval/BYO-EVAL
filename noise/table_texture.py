@@ -3,7 +3,7 @@ from typing import Any
 
 import bpy
 
-from Noise.models import TableTextureNoiseModel
+from noise.models import TableTextureNoiseModel
 
 
 def create_table_material(entropy="low", name="TableMaterial"):
