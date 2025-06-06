@@ -1,7 +1,7 @@
 
 ---
 
-# BYO-Eval: Empower Your Vision-Language Models with Custom Datasets!
+# BYO-Eval: Build Your Own Dataset for Fine-Grained Visual Assessment of VLMs!
 
 Create your own image datasets with Blender to unlock a deeper understanding of your Vision-Language Model (VLM)’s perception abilities. Perfect for diagnostic evaluations and performance analysis, BYO-Eval allows you to tailor datasets specifically for testing VLMs in visual reasoning tasks.
 
