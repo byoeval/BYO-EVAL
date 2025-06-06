@@ -51,3 +51,8 @@ Thumbs.db
 
 *.log
 */png
+
+.txt
+ruff.toml
+
+assets/pdf_to_jpeg.py
