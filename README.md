@@ -126,7 +126,7 @@ If you found this useful, please cite our work:
 }
 ```
 
-For the full paper, [click here](https://arxiv.org/abs/2506.02900).
+For the full paper, [click here](assets/BYO_Eval__Build_Your_Own_Dataset_for_Fine_Grained_Visual_Assessment_of_Multimodal_Language_Models.pdf).
 
 ---
 
