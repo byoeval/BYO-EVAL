@@ -120,10 +120,14 @@ If you found this useful, please cite our work:
 
 ```bibtex
 @article{byo_eval,
-  title={BYO_Eval: Build Your Own Dataset for Fine-Grained Visual Assessment of Multimodal Language Models},
-  author={Ludovic Arnould, Salim Khazem, Hugues Ali Mehenni},
-  year={2025}
+  title={BYO-Eval: Build Your Own Dataset for Fine-Grained Visual Assessment of Multimodal Language Models},
+  author={Ludovic Arnould and Salim Khazem and Hugues Ali Mehenni},
+  journal={arXiv preprint arXiv:2506.05440},
+  year={2025},
+  url={https://arxiv.org/abs/2506.05440},
+  doi={10.48550/arXiv.2506.05440}
 }
+
 ```
 
 For the full paper, [click here](assets/BYO_Eval__Build_Your_Own_Dataset_for_Fine_Grained_Visual_Assessment_of_Multimodal_Language_Models.pdf).
